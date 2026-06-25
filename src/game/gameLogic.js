@@ -18,3 +18,40 @@ export function applyChoice(meters, deltas) {
     comp: clamp(meters.comp + deltas.comp),
   };
 }
+
+export function isBest(choiceKey, scenario) {
+  return choiceKey === scenario.best;
+}
+
+export function scoreDelta(choiceKey, scenario) {
+  return isBest(choiceKey, scenario) ? POINTS_PER_BEST : 0;
+}
+
+export function meterColor(type, value) {
+  if (type === 'risk') {
+    if (value <= 40) return COLORS.green;
+    if (value <= 65) return COLORS.amber;
+    return COLORS.red;
+  }
+  // 'eff' or 'comp'
+  if (value >= 60) return COLORS.green;
+  if (value >= 38) return COLORS.amber;
+  return COLORS.red;
+}
+
+export function meterLabel(type, value) {
+  if (type === 'eff') {
+    if (value >= 65) return 'High Efficiency';
+    if (value >= 42) return 'Balanced';
+    return 'Low Efficiency';
+  }
+  if (type === 'risk') {
+    if (value <= 38) return 'Risk-Aware';
+    if (value <= 62) return 'Moderate Risk';
+    return 'High Risk';
+  }
+  // 'comp'
+  if (value >= 65) return 'Compliant';
+  if (value >= 42) return 'Marginal';
+  return 'At Risk';
+}
