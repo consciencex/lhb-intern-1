@@ -95,6 +95,12 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
         subscribers.delete(cb);
       };
     },
+    destroy() {
+      // No realtime channel to release (in-memory), but clear subscribers so
+      // the interface is uniform with the Supabase API and App.jsx can call
+      // destroy() on either backend when the gameAPI changes/unmounts.
+      subscribers.clear();
+    },
   };
 
   function seedStation() {

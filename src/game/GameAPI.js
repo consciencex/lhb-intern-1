@@ -47,6 +47,10 @@ import { createSupabaseGameAPI } from './supabaseGameAPI.js';
  * @property {(cb: (station: Station) => void) => (() => void)} subscribe
  *           subscribe returns an unsubscribe function.
  * @property {() => Station} getStation
+ * @property {() => void} destroy
+ *           Release the realtime channel (Supabase) and drop all subscribers.
+ *           Callers that own the API lifecycle must call this when the GameAPI
+ *           is replaced or the app unmounts, or the channel is orphaned.
  */
 
 /**

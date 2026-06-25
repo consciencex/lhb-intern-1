@@ -1,10 +1,17 @@
 -- supabase/schema.sql
 -- Automate or Not? — workshop game schema.
 --
--- WORKSHOP-GRADE SECURITY: the RLS policies below grant the anon role full
--- read/write on game tables. This is intentional for a throwaway, time-boxed
--- training room with no real customer data. DO NOT reuse these policies for
--- any table holding personal or production data.
+-- SECURITY & THREAT MODEL (WORKSHOP-GRADE — an informed, documented choice):
+--   * The RLS policies below grant the `anon` role full read/write on all game
+--     tables, and is_best / breach / score are client-supplied. Identity is a
+--     self-claimed display name plus a random per-device id — there is no auth.
+--   * This is acceptable because the game is a facilitator-run, in-room training
+--     activity with NO personal or sensitive data and no real stakes. The worst
+--     a participant can do is spoof their own score in a throwaway demo room.
+--   * NOT suitable for public/internet deployment. Hardening that would require
+--     authentication, row-ownership RLS, and server-side validation of
+--     decisions/scores was deliberately left out of scope.
+--   * See supabase/README.md → "Security & threat model" for the full writeup.
 
 create extension if not exists pgcrypto;
 
@@ -42,6 +49,20 @@ create table if not exists decisions (
   created_at   timestamptz default now(),
   unique (player_id, scenario_idx)
 );
+
+-- ── atomic score increment ──────────────────────────────────────────────────
+-- award() calls this via supabase.rpc() so concurrent awards (or an award that
+-- interleaves with a refresh) can't lose points the way a client-side
+-- select-then-update would.
+
+create or replace function increment_score(p_player_id uuid, p_points int)
+returns void
+language sql
+as $$
+  update players set score = score + p_points where id = p_player_id;
+$$;
+
+grant execute on function increment_score(uuid, int) to anon, authenticated;
 
 -- ── row level security (WORKSHOP-GRADE: permissive anon access) ────────────
 

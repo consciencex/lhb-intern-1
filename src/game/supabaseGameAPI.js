@@ -14,7 +14,10 @@ import { SCENARIOS } from '../content/scenarios.js';
  */
 export function createSupabaseGameAPI({ view, roomCode, supabase }) {
   const CLIENT_ID_KEY = 'aon_client_id';
-  const PLAYER_ID_KEY = 'aon_player_id';
+  // Scope the player-id slot by room so a device that joins room A then room B
+  // does not reuse A's player_id and mis-attribute decisions across rooms.
+  // (aon_client_id stays global as the stable per-device identity.)
+  const PLAYER_ID_KEY = `aon_player_id:${roomCode}`;
   // Derived from the scenario content so the advance boundary stays in sync
   // with the deck (matches mockGameAPI, which also uses SCENARIOS.length).
   const SCENARIO_COUNT = SCENARIOS.length; // currentIdx 0..SCENARIO_COUNT-1
@@ -184,24 +187,31 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
 
   async function emit(event, payload) {
     if (event !== 'decision') return;
-    if (!roomId) await loadRoom();
-    const pid = playerId || safeGet(PLAYER_ID_KEY);
-    if (!roomId || !pid) return;
+    try {
+      if (!roomId) await loadRoom();
+      const pid = playerId || safeGet(PLAYER_ID_KEY);
+      if (!roomId || !pid) return;
 
-    const { error } = await supabase.from('decisions').insert({
-      room_id: roomId,
-      player_id: pid,
-      scenario_id: payload.scenarioId,
-      scenario_idx: payload.scenarioIdx,
-      choice: payload.choice,
-      is_best: payload.isBest,
-      breach: payload.breach,
-    });
+      const { error } = await supabase.from('decisions').insert({
+        room_id: roomId,
+        player_id: pid,
+        scenario_id: payload.scenarioId,
+        scenario_idx: payload.scenarioIdx,
+        choice: payload.choice,
+        is_best: payload.isBest,
+        breach: payload.breach,
+      });
 
-    // Swallow the unique(player_id, scenario_idx) duplicate as success.
-    if (error && error.code !== '23505') {
-      // Non-duplicate errors are surfaced for the caller / console.
-      throw error;
+      // Swallow the unique(player_id, scenario_idx) duplicate as success —
+      // that's expected idempotency (re-pick / reconnect), not an error.
+      if (error && error.code !== '23505') {
+        // Views call emit() fire-and-forget; log non-duplicate errors so they
+        // stay visible for debugging but resolve rather than reject (avoids an
+        // unhandledrejection).
+        console.error('[supabaseGameAPI] emit(decision) failed:', error);
+      }
+    } catch (err) {
+      console.error('[supabaseGameAPI] emit(decision) threw:', err);
     }
   }
 
@@ -209,44 +219,58 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     const pid = playerId || safeGet(PLAYER_ID_KEY);
     if (!pid || !points) return;
 
-    // Read current score, then write the incremented value.
-    const { data } = await supabase
-      .from('players')
-      .select('score')
-      .eq('id', pid)
-      .single();
-    const current = data && typeof data.score === 'number' ? data.score : 0;
-    await supabase
-      .from('players')
-      .update({ score: current + points })
-      .eq('id', pid);
+    try {
+      // Atomic server-side increment (see increment_score in schema.sql).
+      // Avoids the lost-update race of a select-then-update round trip when
+      // awards land concurrently or interleave with a refresh.
+      const { error } = await supabase.rpc('increment_score', {
+        p_player_id: pid,
+        p_points: points,
+      });
+      if (error) {
+        console.error('[supabaseGameAPI] award failed:', error);
+      }
+    } catch (err) {
+      console.error('[supabaseGameAPI] award threw:', err);
+    }
   }
 
   async function advance() {
-    if (!roomId) await loadRoom();
-    if (!roomId) return;
-    const last = station.currentIdx;
-    // Past the last index, end the room; otherwise step to the next scenario.
-    if (last >= SCENARIO_COUNT - 1) {
-      await supabase
+    try {
+      if (!roomId) await loadRoom();
+      if (!roomId) return;
+      const last = station.currentIdx;
+      // Past the last index, end the room; otherwise step to next scenario.
+      const patch =
+        last >= SCENARIO_COUNT - 1
+          ? { status: 'ended' }
+          : { current_idx: last + 1, status: 'active' };
+      const { error } = await supabase
         .from('rooms')
-        .update({ status: 'ended' })
+        .update(patch)
         .eq('id', roomId);
-    } else {
-      await supabase
-        .from('rooms')
-        .update({ current_idx: last + 1, status: 'active' })
-        .eq('id', roomId);
+      if (error) {
+        console.error('[supabaseGameAPI] advance failed:', error);
+      }
+    } catch (err) {
+      console.error('[supabaseGameAPI] advance threw:', err);
     }
   }
 
   async function setReveal(on) {
-    if (!roomId) await loadRoom();
-    if (!roomId) return;
-    await supabase
-      .from('rooms')
-      .update({ reveal: !!on })
-      .eq('id', roomId);
+    try {
+      if (!roomId) await loadRoom();
+      if (!roomId) return;
+      const { error } = await supabase
+        .from('rooms')
+        .update({ reveal: !!on })
+        .eq('id', roomId);
+      if (error) {
+        console.error('[supabaseGameAPI] setReveal failed:', error);
+      }
+    } catch (err) {
+      console.error('[supabaseGameAPI] setReveal threw:', err);
+    }
   }
 
   function subscribe(cb) {
@@ -256,6 +280,20 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     return () => {
       listeners.delete(cb);
     };
+  }
+
+  function destroy() {
+    // Tear down the realtime channel and drop all subscribers. Callers that
+    // own the API lifecycle (App.jsx) invoke this when the gameAPI changes or
+    // unmounts so the channel is not orphaned (it is opened at construction).
+    try {
+      if (supabase && typeof supabase.removeChannel === 'function') {
+        supabase.removeChannel(channel);
+      }
+    } catch (err) {
+      console.error('[supabaseGameAPI] destroy (removeChannel) failed:', err);
+    }
+    listeners.clear();
   }
 
   return {
@@ -268,6 +306,7 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     setReveal,
     subscribe,
     getStation,
+    destroy,
     // Exposed for teardown by callers that own the API lifecycle.
     _channel: channel,
   };

@@ -8,13 +8,15 @@ back to the in-memory mock in `src/game/mockGameAPI.js` (single-device demo).
 ## Files
 
 - `schema.sql` — the full DDL: tables (`rooms`, `players`, `decisions`),
-  constraints, workshop-grade RLS policies, the `supabase_realtime`
-  publication, and a seed `DEMO` room. Apply it once in the SQL editor.
+  constraints, the `increment_score(uuid, int)` RPC used by `award`,
+  workshop-grade RLS policies, the `supabase_realtime` publication, and a seed
+  `DEMO` room. Apply it once in the SQL editor.
 
-> **WORKSHOP-GRADE SECURITY.** The RLS policies grant the `anon` role full
-> read/write on the game tables. This is intentional for a throwaway,
-> time-boxed training room with no real customer data. **Do not reuse these
-> policies for any table holding personal or production data.**
+> **WORKSHOP-GRADE SECURITY (by design).** Anon can read/write all game rows
+> and scores/flags are client-trusted — this is an intentional tradeoff for a
+> closed, facilitator-run, no-PII training game. See
+> [Security & threat model](#security--threat-model) below for the full
+> rationale and what production hardening would require.
 
 ## MANUAL VERIFICATION — realtime sync
 
@@ -80,8 +82,17 @@ subscription drives the aggregate from real data.
 Make Player A pick a **second** time on the same scenario (or refresh and
 re-pick). No second `decisions` row is created (the
 `unique(player_id, scenario_idx)` constraint fires `23505`, which `emit`
-swallows), and the Screen aggregate does not double-count. No console error
+swallows as expected idempotency — **not** an error), and the Screen aggregate
+does not double-count. The duplicate path logs nothing; no console error
 surfaces.
+
+> **Error handling note.** The write methods (`emit`, `award`, `advance`,
+> `setReveal`) are called fire-and-forget by the views, so they catch
+> non-fatal failures, `console.error(...)` them for debugging, and resolve
+> rather than reject (no `unhandledrejection`). So in normal operation — and on
+> the idempotent duplicate above — the console stays clean; a genuine write
+> failure shows a single `[supabaseGameAPI] …` error line instead of crashing
+> the tab.
 
 ### 7. Confirm host advance & reveal propagate
 
@@ -93,3 +104,48 @@ reveal state. Click **Advance** past the last scenario: `rooms.status` becomes
 
 If every box above behaves as described, realtime sync is verified
 end-to-end. (No automated assertion is possible for this step.)
+
+## Security & threat model
+
+The backend is **workshop-grade by design**. This is an informed, documented
+tradeoff — not an oversight — appropriate for what this game is and is not.
+
+### What is intentionally open
+
+- **Permissive anon RLS.** The `rooms` / `players` / `decisions` policies grant
+  the `anon` role full `select` / `insert` / `update`. Any participant with the
+  public anon key (shipped in the client bundle) can read and write any row.
+- **Client-trusted scores and flags.** `is_best`, `breach`, and `score` are
+  computed in the browser and sent up; the server does not re-derive or
+  validate them. A participant could spoof their own score or decision flags.
+- **Self-claimed identity, no auth.** A "player" is a self-entered display name
+  plus a random per-device id (`aon_client_id` in `localStorage`). There is no
+  login, no email, no verification — anyone can claim any name.
+
+### Why that is acceptable here
+
+- This is a **closed, facilitator-run, in-room training activity**. Players are
+  in the same room as the facilitator running the Host/Screen views.
+- There is **no personal or sensitive data** — no PII, no credentials, nothing
+  of value. Rooms (e.g. `DEMO`) are throwaway and short-lived.
+- There are **no real stakes**. The worst a participant can do is fudge their
+  own score in a game whose purpose is discussion, not competition. The
+  facilitator sees the live Screen aggregate and would notice nonsense.
+
+Given that, adding authentication, ownership checks, and server-side scoring
+would be cost with no benefit for the intended use.
+
+### NOT suitable for public / internet deployment
+
+If this were ever exposed beyond a facilitated room — on the open internet, or
+with any data worth protecting — it would need, at minimum:
+
+- **Authentication** (Supabase Auth) so players are real, distinct identities.
+- **Row-ownership RLS** so a player can only write their own `players` /
+  `decisions` rows (e.g. `auth.uid()`-scoped policies) and only the host can
+  mutate `rooms`.
+- **Server-side validation of decisions and scores** (e.g. a Postgres function
+  or Edge Function that derives `is_best` / `breach` / score increments from
+  the canonical scenario data) so the client cannot fabricate outcomes.
+
+These are deliberately out of scope for the workshop game.

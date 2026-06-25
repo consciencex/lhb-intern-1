@@ -45,6 +45,11 @@ export default function App() {
     [view, roomCode],
   );
 
+  // Tear down the old GameAPI when it changes (view/room switch) or the app
+  // unmounts, so its realtime channel is released instead of orphaned. This
+  // composes with useStation's own [gameAPI] cleanup — both run on change.
+  useEffect(() => () => gameAPI.destroy?.(), [gameAPI]);
+
   function handleChange(nextView) {
     writeViewParam(nextView);
     setView(nextView);

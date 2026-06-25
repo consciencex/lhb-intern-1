@@ -40,6 +40,9 @@ function makeSupabaseStub() {
   return {
     record,
     from: vi.fn(() => makeQueryBuilder({ data: [], error: null })),
+    // award() calls supabase.rpc('increment_score', ...). The stub resolves
+    // PostgREST-shaped so the atomic-increment path runs without a real DB.
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
     channel: vi.fn(() => {
       record.channels += 1;
       return makeChannel(record);
@@ -58,6 +61,7 @@ const INTERFACE_METHODS = [
   'setReveal',
   'subscribe',
   'getStation',
+  'destroy',
 ];
 
 beforeEach(() => {
@@ -154,5 +158,98 @@ describe('createSupabaseGameAPI — structural contract', () => {
     await expect(api.award(10)).resolves.toBeUndefined();
     await expect(api.advance()).resolves.toBeUndefined();
     await expect(api.setReveal(true)).resolves.toBeUndefined();
+  });
+
+  it('destroy() removes the realtime channel and clears subscribers', () => {
+    const supabase = makeSupabaseStub();
+    const api = createSupabaseGameAPI({
+      view: 'screen',
+      roomCode: 'DEMO',
+      supabase,
+    });
+    const cb = vi.fn();
+    api.subscribe(cb);
+    cb.mockClear(); // ignore the immediate snapshot push
+    api.destroy();
+    expect(supabase.removeChannel).toHaveBeenCalledTimes(1);
+    // After destroy the listener set is cleared, so a manual notify path could
+    // no longer reach it. (We can't trigger realtime here; clearing is asserted
+    // via removeChannel + the absence of further snapshot pushes.)
+    expect(cb).not.toHaveBeenCalled();
+  });
+});
+
+// A supabase stub whose decisions.insert() returns a configurable error, and
+// whose rooms lookup resolves to a real room so emit() reaches the insert.
+function makeEmitStub(insertResult) {
+  const channel = {
+    on() { return channel; },
+    subscribe(cb) { if (cb) cb('SUBSCRIBED'); return channel; },
+    unsubscribe() { return Promise.resolve('ok'); },
+  };
+  const room = { id: 'room-1', code: 'DEMO', current_idx: 0, reveal: false, status: 'lobby' };
+  return {
+    from: vi.fn((table) => {
+      if (table === 'rooms') {
+        return {
+          select() { return this; },
+          eq() { return this; },
+          maybeSingle() { return Promise.resolve({ data: room, error: null }); },
+          update() { return { eq() { return Promise.resolve({ error: null }); } }; },
+        };
+      }
+      if (table === 'decisions') {
+        return {
+          insert: vi.fn(() => Promise.resolve(insertResult)),
+          select() { return this; },
+          eq() { return Promise.resolve({ data: [], error: null }); },
+        };
+      }
+      // players (loadPlayers): resolve empty.
+      return {
+        select() { return this; },
+        eq() { return this; },
+        order() { return Promise.resolve({ data: [], error: null }); },
+      };
+    }),
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    channel: vi.fn(() => channel),
+    removeChannel: vi.fn(() => Promise.resolve('ok')),
+  };
+}
+
+const DECISION_PAYLOAD = {
+  scenarioId: 'loan',
+  scenarioIdx: 0,
+  choice: 'hitl',
+  isBest: true,
+  breach: false,
+};
+
+describe('createSupabaseGameAPI — emit error handling', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    // A player id must be present for emit() to reach the insert.
+    localStorage.setItem('aon_player_id:DEMO', 'player-1');
+  });
+
+  it('swallows the 23505 duplicate as success with no console.error', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const supabase = makeEmitStub({ error: { code: '23505' } });
+    const api = createSupabaseGameAPI({ view: 'play', roomCode: 'DEMO', supabase });
+
+    await expect(api.emit('decision', DECISION_PAYLOAD)).resolves.toBeUndefined();
+    expect(errSpy).not.toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it('resolves (does not reject) on a non-duplicate error AND logs it', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const supabase = makeEmitStub({ error: { code: 'XYZ', message: 'boom' } });
+    const api = createSupabaseGameAPI({ view: 'play', roomCode: 'DEMO', supabase });
+
+    await expect(api.emit('decision', DECISION_PAYLOAD)).resolves.toBeUndefined();
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 });
