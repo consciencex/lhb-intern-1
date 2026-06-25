@@ -30,10 +30,6 @@ export default function PlayerView({ gameAPI }) {
   const [history, setHistory] = useState([]);
   const [answered, setAnswered] = useState(false);
   const [choice, setChoice] = useState(null);
-  // Forces a re-read of the (mutated-in-place) Station after a self-advance.
-  // The mock GameAPI notifies subscribers with the same Station reference, so
-  // useStation's setState bails out; this local tick guarantees a re-render.
-  const [, setTick] = useState(0);
 
   // Reset per-scenario answer state whenever the host (or self-advance) moves on.
   const prevIdxRef = useRef(currentIdx);
@@ -93,8 +89,6 @@ export default function PlayerView({ gameAPI }) {
 
   function next() {
     gameAPI.advance();
-    // Re-render to pick up the advanced currentIdx (see setTick rationale above).
-    setTick((t) => t + 1);
   }
 
   const wrap = {

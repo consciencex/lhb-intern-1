@@ -1,6 +1,13 @@
 // src/hooks/useStation.js
 import { useEffect, useState } from 'react';
 
+// Shallow snapshot so a backend that mutates and re-emits the SAME Station
+// object reference (e.g. the in-memory mock) still produces a new top-level
+// reference and triggers a React re-render.
+function snapshot(s) {
+  return s ? { ...s } : s;
+}
+
 /**
  * Subscribe to a GameAPI's Station and re-render on every change.
  *
@@ -8,14 +15,14 @@ import { useEffect, useState } from 'react';
  * @returns {object} the latest Station
  */
 export function useStation(gameAPI) {
-  const [station, setStation] = useState(() => gameAPI.getStation());
+  const [station, setStation] = useState(() => snapshot(gameAPI.getStation()));
 
   useEffect(() => {
     // Re-sync immediately in case the station changed between the initial
     // useState and this effect running.
-    setStation(gameAPI.getStation());
+    setStation(snapshot(gameAPI.getStation()));
     const unsubscribe = gameAPI.subscribe((next) => {
-      setStation(next);
+      setStation(snapshot(next));
     });
     return unsubscribe;
   }, [gameAPI]);

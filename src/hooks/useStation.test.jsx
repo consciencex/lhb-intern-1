@@ -51,4 +51,26 @@ describe('useStation', () => {
     unmount();
     expect(api.__unsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it('re-renders even when the API mutates and re-emits the SAME station object', () => {
+    // The in-memory mock GameAPI mutates one Station object in place and
+    // notifies with that same reference. The hook must snapshot so React still
+    // sees a new top-level reference and re-renders. This locks the fix.
+    const station = { currentIdx: 0, respondedCount: 0 };
+    let listener = null;
+    const api = {
+      getStation: () => station,
+      subscribe: (cb) => {
+        listener = cb;
+        return () => {};
+      },
+    };
+    render(<Probe gameAPI={api} />);
+    expect(screen.getByTestId('idx')).toHaveTextContent('0');
+    act(() => {
+      station.currentIdx = 5; // mutate IN PLACE
+      listener(station); // re-emit the SAME reference
+    });
+    expect(screen.getByTestId('idx')).toHaveTextContent('5');
+  });
 });
