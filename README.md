@@ -1,22 +1,88 @@
-# CODING AGENTS: READ THIS FIRST
+# Automate or Not?
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+A live, in-room workshop game for ~30 bank interns. Each player is a **Team
+Lead** on their **phone**; a **projector** shows live room aggregates and a
+scoreboard; a **host** (facilitator) advances through the scenarios. Players read
+a banking work scenario (loan approvals, AML monitoring, KYC, complaints, …),
+pick one of three approaches — **Automate Fully / Human-in-Loop / Manual
+Review** — and immediately see the consequence, three personal meters move, and a
+red **COMPLIANCE BREACH** card on a bad high-risk choice. At the end each player
+gets a personal **MISSION DEBRIEF** report card. The point is the discussion the
+spread of answers provokes, not the score.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+Three URL-selected views share one app — `room` picks the shared session, `view`
+picks the screen:
 
-## What you should do — IMPORTANT
+| Role          | Device       | URL                       |
+| ------------- | ------------ | ------------------------- |
+| Player        | each phone   | `?view=play&room=DEMO`    |
+| Screen        | projector    | `?view=screen&room=DEMO`  |
+| Host          | facilitator  | `?view=host&room=DEMO`    |
 
-**Read `interactive-games-digital-training/project/AutomateOrNot.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+> Originated from a [Claude Design](https://claude.ai/design) handoff; the
+> original HTML/CSS/JS prototype and screenshots live in [`project/`](project/)
+> as the visual reference for this built version.
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+## Tech stack
 
-## About the design files
+- **Vite** + **React 18** (plain JavaScript / JSX — no TypeScript)
+- **Supabase** (`@supabase/supabase-js`) for realtime multiplayer; falls back to
+  an in-memory mock when no Supabase env is configured
+- **Vitest** + Testing Library (jsdom) for the test suite
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+## Quick start (single-device / no backend)
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+```bash
+npm install
+npm run dev
+```
 
-## Bundle contents
+Open these three URLs (default `http://localhost:5173`), each in its own
+tab/window — they work immediately against the in-memory mock, no backend
+required:
 
-- `interactive-games-digital-training/README.md` — this file
-- `interactive-games-digital-training/project/` — the `Interactive games digital training` project files (HTML prototypes, assets, components)
+- Player: <http://localhost:5173/?view=play>
+- Screen: <http://localhost:5173/?view=screen>
+- Host:   <http://localhost:5173/?view=host>
+
+The tabs are not connected to each other in mock mode (it is per-tab and
+in-memory) — this is for trying the game out and rehearsing each screen. For a
+real shared session across phones, set up Supabase.
+
+## Real multiplayer (Supabase)
+
+1. Create a free project at <https://supabase.com>.
+2. In **SQL Editor**, paste and run [`supabase/schema.sql`](supabase/schema.sql)
+   (creates the tables + realtime publication and seeds the `DEMO` room).
+3. `cp .env.example .env`, then fill in from **Project Settings → API**:
+   ```
+   VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+   VITE_SUPABASE_ANON_KEY=YOUR-ANON-PUBLIC-KEY
+   ```
+4. `npm run dev -- --host` (bind to your LAN so phones can reach it), or
+   `npm run build` and host the `dist/` folder on any static host.
+
+### Per-device URLs for the live activity
+
+Using the **Network** address Vite prints (e.g. `http://192.168.1.42:5173`) and
+the seeded `DEMO` room:
+
+- Host laptop: `http://192.168.1.42:5173/?view=host&room=DEMO`
+- Projector:   `http://192.168.1.42:5173/?view=screen&room=DEMO`
+- Each phone:  `http://192.168.1.42:5173/?view=play&room=DEMO`
+
+## Testing
+
+```bash
+npm test          # full Vitest suite (non-watch)
+npm run build     # production build (also a good final smoke check)
+```
+
+## More
+
+- **[`RUN.md`](RUN.md)** — the full operator runbook: prerequisites, install,
+  Supabase setup, the dev/build/host workflow, per-device URLs, and a manual
+  3-device multiplayer test checklist.
+- **[`supabase/README.md`](supabase/README.md)** — DB setup, the manual realtime
+  verification steps, and the security / threat-model writeup.
+- **[`project/`](project/)** — the original design prototype and screenshots.
