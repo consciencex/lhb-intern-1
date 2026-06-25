@@ -128,3 +128,43 @@ describe('createMockGameAPI — subscribe', () => {
     expect(cb).toHaveBeenCalledTimes(1); // no further calls after unsubscribe
   });
 });
+
+describe('createMockGameAPI — seed', () => {
+  it('seed:true pre-populates 30 players across Alpha/Beta/Gamma/Delta', () => {
+    const api = createMockGameAPI({ seed: true });
+    const s = api.getStation();
+    expect(s.players.length).toBeGreaterThan(0);
+    expect(s.players.length).toBe(30);
+    const teams = new Set(s.players.map((p) => p.team));
+    expect(teams).toEqual(new Set(['Alpha', 'Beta', 'Gamma', 'Delta']));
+    expect(s.status).toBe('active');
+  });
+
+  it('seed:true produces decisions for the current scenario that are aggregate-able', () => {
+    const api = createMockGameAPI({ seed: true });
+    const s = api.getStation();
+    const forCurrent = s.decisions.filter((d) => d.scenarioIdx === s.currentIdx);
+    expect(forCurrent.length).toBe(s.players.length);
+    const choices = new Set(forCurrent.map((d) => d.choice));
+    expect(choices).toEqual(new Set(['automate', 'hitl', 'manual']));
+    expect(s.respondedCount).toBe(s.players.length);
+  });
+
+  it('seed:true scores players who picked the best choice for the current scenario', () => {
+    const api = createMockGameAPI({ seed: true });
+    const s = api.getStation();
+    const best = SCENARIOS[s.currentIdx].best;
+    s.players.forEach((p, i) => {
+      const dec = s.decisions.find((d) => d.playerId === p.id && d.scenarioIdx === s.currentIdx);
+      expect(p.score).toBe(dec.choice === best ? 10 : 0);
+    });
+  });
+
+  it('seed is deterministic — two instances produce identical decision choices', () => {
+    const a = createMockGameAPI({ seed: true });
+    const b = createMockGameAPI({ seed: true });
+    const ca = a.getStation().decisions.map((d) => d.choice);
+    const cbChoices = b.getStation().decisions.map((d) => d.choice);
+    expect(ca).toEqual(cbChoices);
+  });
+});

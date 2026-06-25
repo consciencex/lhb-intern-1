@@ -97,5 +97,41 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
     },
   };
 
+  function seedStation() {
+    const teams = ['Alpha', 'Beta', 'Gamma', 'Delta'];
+    const choiceCycle = ['automate', 'hitl', 'manual'];
+    const NAMES = [
+      'Aisha', 'Ben', 'Chloe', 'Darren', 'Elena', 'Faisal', 'Grace', 'Hugo',
+      'Ivy', 'Jamal', 'Kira', 'Leon', 'Mona', 'Nadia', 'Omar', 'Priya',
+      'Quentin', 'Rosa', 'Sami', 'Tara', 'Umar', 'Vera', 'Wei', 'Xena',
+      'Yusuf', 'Zoe', 'Amir', 'Bella', 'Cyrus', 'Dana',
+    ];
+    const scenario = SCENARIOS[station.currentIdx];
+    NAMES.forEach((name, i) => {
+      const player = {
+        id: makeId('p'),
+        name,
+        team: teams[i % teams.length],
+        score: 0,
+      };
+      station.players.push(player);
+      const choice = choiceCycle[i % choiceCycle.length];
+      const isBest = choice === scenario.best;
+      const breach = !!scenario.choices[choice].breach;
+      if (isBest) player.score += 10;
+      station.decisions.push({
+        playerId: player.id,
+        scenarioIdx: station.currentIdx,
+        choice,
+        isBest,
+        breach,
+      });
+    });
+    station.status = 'active';
+    recomputeResponded();
+  }
+
+  if (seed) seedStation();
+
   return api;
 }
