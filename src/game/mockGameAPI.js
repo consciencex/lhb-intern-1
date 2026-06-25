@@ -48,6 +48,53 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
     getStation() {
       return station;
     },
+    joinRoom({ name }) {
+      const player = { id: makeId('p'), name, team: null, score: 0 };
+      station.players.push(player);
+      if (station.status === 'lobby') station.status = 'active';
+      notify();
+      return Promise.resolve({ playerId: player.id });
+    },
+    emit(event, payload) {
+      if (event === 'decision') {
+        const { scenarioIdx, choice, isBest, breach, playerId } = payload;
+        const pid = playerId != null ? playerId : (station.players[0] && station.players[0].id);
+        const exists = station.decisions.some(
+          (d) => d.playerId === pid && d.scenarioIdx === scenarioIdx
+        );
+        if (!exists) {
+          station.decisions.push({ playerId: pid, scenarioIdx, choice, isBest, breach });
+        }
+      }
+      notify();
+      return Promise.resolve();
+    },
+    advance() {
+      if (station.currentIdx >= SCENARIOS.length - 1) {
+        station.status = 'ended';
+      } else {
+        station.currentIdx += 1;
+      }
+      notify();
+      return Promise.resolve();
+    },
+    award(points) {
+      const p = station.players[0];
+      if (p) p.score += points;
+      notify();
+      return Promise.resolve();
+    },
+    setReveal(on) {
+      station.reveal = !!on;
+      notify();
+      return Promise.resolve();
+    },
+    subscribe(cb) {
+      subscribers.add(cb);
+      return function unsubscribe() {
+        subscribers.delete(cb);
+      };
+    },
   };
 
   return api;
