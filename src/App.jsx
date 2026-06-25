@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { COLORS, FONT } from './theme.js';
 import { buildGameAPI } from './game/GameAPI.js';
 import { getSupabase } from './game/supabaseClient.js';
@@ -29,11 +29,21 @@ export default function App() {
   const [view, setView] = useState(initial.view);
   const roomCode = initial.roomCode;
 
-  const gameAPI = buildGameAPI({
-    view,
-    roomCode,
-    supabase: getSupabase(),
-  });
+  // Keep the rendered view in sync with browser Back/Forward, which changes
+  // the URL via the history stack without firing our click handler.
+  useEffect(() => {
+    const onPop = () => setView(readParams().view);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Memoize so the GameAPI is rebuilt only when the view or room changes, not
+  // on every render. Task 12's Supabase factory opens a realtime channel;
+  // rebuilding each render would orphan that subscription.
+  const gameAPI = useMemo(
+    () => buildGameAPI({ view, roomCode, supabase: getSupabase() }),
+    [view, roomCode],
+  );
 
   function handleChange(nextView) {
     writeViewParam(nextView);

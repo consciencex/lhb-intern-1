@@ -51,4 +51,18 @@ describe('App routing', () => {
     // URL reflects the new view
     expect(new URLSearchParams(window.location.search).get('view')).toBe('host');
   });
+
+  it('resyncs the rendered view on browser Back/Forward (popstate)', () => {
+    setSearch('');
+    render(<App />);
+    // Starts on the player intro
+    expect(screen.getByRole('button', { name: /Start/i })).toBeInTheDocument();
+    // Simulate Back/Forward navigating to ?view=host: the URL changes via the
+    // history stack and the browser fires popstate (no click handler runs).
+    window.history.pushState({}, '', '?view=host');
+    fireEvent(window, new PopStateEvent('popstate'));
+    // App resyncs view state from the URL and renders the Host view
+    expect(screen.getByText(/Host Controls/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Start/i })).toBeNull();
+  });
 });
