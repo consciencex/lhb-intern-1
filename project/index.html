@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Automate or Not?</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap"
+    />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: #D8DFE8; }
+      @keyframes slideInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes shake { 0%,100%{ transform: translateX(0); } 18%{ transform: translateX(-7px); } 36%{ transform: translateX(7px); } 54%{ transform: translateX(-5px); } 72%{ transform: translateX(5px); } 90%{ transform: translateX(-2px); } }
+      @keyframes pulseRed { 0%,100%{ box-shadow: 0 0 0 0 rgba(220,38,38,0); } 50%{ box-shadow: 0 0 0 6px rgba(220,38,38,0.15); } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
