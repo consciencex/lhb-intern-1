@@ -13,6 +13,7 @@ import { createSupabaseGameAPI } from './supabaseGameAPI.js';
 /**
  * @typedef {Object} Decision
  * @property {string} playerId
+ * @property {string} scenarioId       // stable scenario id (maps to Supabase scenario_id)
  * @property {number} scenarioIdx
  * @property {string} choice           // 'automate' | 'hitl' | 'manual'
  * @property {boolean} isBest

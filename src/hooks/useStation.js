@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 // Shallow snapshot so a backend that mutates and re-emits the SAME Station
 // object reference (e.g. the in-memory mock) still produces a new top-level
 // reference and triggers a React re-render.
+// NOTE: this is a SHALLOW copy — the inner `decisions`/`players` arrays keep
+// their identity when the backend mutates them in place. Consumers must
+// recompute over them each render (e.g. call aggregate(station.decisions)
+// directly) rather than identity-memoizing on those arrays.
 function snapshot(s) {
   return s ? { ...s } : s;
 }

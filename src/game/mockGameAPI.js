@@ -57,13 +57,13 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
     },
     emit(event, payload) {
       if (event === 'decision') {
-        const { scenarioIdx, choice, isBest, breach, playerId } = payload;
+        const { scenarioId, scenarioIdx, choice, isBest, breach, playerId } = payload;
         const pid = playerId != null ? playerId : (station.players[0] && station.players[0].id);
         const exists = station.decisions.some(
           (d) => d.playerId === pid && d.scenarioIdx === scenarioIdx
         );
         if (!exists) {
-          station.decisions.push({ playerId: pid, scenarioIdx, choice, isBest, breach });
+          station.decisions.push({ playerId: pid, scenarioId, scenarioIdx, choice, isBest, breach });
         }
       }
       notify();

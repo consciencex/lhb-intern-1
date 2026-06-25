@@ -51,7 +51,10 @@ describe('createMockGameAPI — joinRoom, emit, respondedCount', () => {
     await api.emit('decision', { playerId: p2, scenarioId: 'loan', scenarioIdx: 0, choice: 'automate', isBest: false, breach: true });
     const s = api.getStation();
     expect(s.decisions).toHaveLength(2);
-    expect(s.decisions[0]).toEqual({ playerId: p1, scenarioIdx: 0, choice: 'hitl', isBest: true, breach: false });
+    // scenarioId is persisted alongside scenarioIdx (maps to the Supabase
+    // scenario_id column); it must not silently drop from the stored decision.
+    expect(s.decisions[0]).toEqual({ playerId: p1, scenarioId: 'loan', scenarioIdx: 0, choice: 'hitl', isBest: true, breach: false });
+    expect(s.decisions[0].scenarioId).toBe('loan');
     expect(s.respondedCount).toBe(2);
   });
 
