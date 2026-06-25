@@ -177,3 +177,179 @@ describe('meterLabel', () => {
     expect(meterLabel('comp', 41)).toBe('At Risk');
   });
 });
+
+describe('reportProfile', () => {
+  it('maps eff and comp to {pct,color,label} and risk to {safePct,color,label}', () => {
+    const profile = reportProfile({ eff: 72, risk: 30, comp: 50 });
+    expect(profile.eff).toEqual({ pct: 72, color: COLORS.green, label: 'High Efficiency' });
+    expect(profile.comp).toEqual({ pct: 50, color: COLORS.amber, label: 'Marginal' });
+    expect(profile.risk).toEqual({ safePct: 70, color: COLORS.green, label: 'Risk-Aware' });
+  });
+
+  it('risk safePct is 100 minus the raw risk value', () => {
+    const profile = reportProfile({ eff: 50, risk: 80, comp: 50 });
+    expect(profile.risk.safePct).toBe(20);
+  });
+
+  it('risk color and label use the RAW risk value, not safePct', () => {
+    // raw risk 80 -> safePct 20. color/label must reflect raw 80 (High Risk / red), not 20.
+    const profile = reportProfile({ eff: 50, risk: 80, comp: 50 });
+    expect(profile.risk.color).toBe(COLORS.red);
+    expect(profile.risk.label).toBe('High Risk');
+  });
+});
+
+describe('aggregate', () => {
+  it('returns zeroed counts and 0% bars with no divide-by-zero when total is 0', () => {
+    const agg = aggregate([]);
+    expect(agg.total).toBe(0);
+    expect(agg.counts).toEqual({ automate: 0, hitl: 0, manual: 0 });
+    expect(agg.bars.map((b) => b.pct)).toEqual([0, 0, 0]);
+    expect(agg.bars.map((b) => b.pctStr)).toEqual(['0%', '0%', '0%']);
+  });
+
+  it('counts decisions by choice and keeps CHOICE_ORDER (automate, hitl, manual)', () => {
+    const decisions = [
+      { choice: 'automate' },
+      { choice: 'automate' },
+      { choice: 'hitl' },
+      { choice: 'manual' },
+    ];
+    const agg = aggregate(decisions);
+    expect(agg.total).toBe(4);
+    expect(agg.counts).toEqual({ automate: 2, hitl: 1, manual: 1 });
+    expect(agg.bars.map((b) => b.key)).toEqual(['automate', 'hitl', 'manual']);
+  });
+
+  it('computes rounded pct, pctStr, label, and color per bar', () => {
+    const decisions = [
+      { choice: 'automate' },
+      { choice: 'automate' },
+      { choice: 'hitl' },
+      { choice: 'manual' },
+    ];
+    const agg = aggregate(decisions);
+    expect(agg.bars[0]).toEqual({
+      key: 'automate',
+      label: 'Automate Fully',
+      pct: 50,
+      pctStr: '50%',
+      color: COLORS.barAutomate,
+    });
+    expect(agg.bars[1]).toEqual({
+      key: 'hitl',
+      label: 'Human-in-Loop',
+      pct: 25,
+      pctStr: '25%',
+      color: COLORS.barHitl,
+    });
+    expect(agg.bars[2]).toEqual({
+      key: 'manual',
+      label: 'Manual Review',
+      pct: 25,
+      pctStr: '25%',
+      color: COLORS.barManual,
+    });
+  });
+
+  it('rounds pct to the nearest integer (1 of 3 -> 33%)', () => {
+    const decisions = [{ choice: 'automate' }, { choice: 'hitl' }, { choice: 'manual' }];
+    const agg = aggregate(decisions);
+    expect(agg.bars.map((b) => b.pct)).toEqual([33, 33, 33]);
+  });
+});
+
+describe('isRoomSplit', () => {
+  it('is false when total is 0', () => {
+    const agg = aggregate([]);
+    expect(isRoomSplit(agg)).toBe(false);
+  });
+
+  it('is true when the top two bar pcts are within 15 points (50/50)', () => {
+    const agg = aggregate([{ choice: 'automate' }, { choice: 'hitl' }]);
+    // pcts: 50, 50, 0 -> top two are 50 and 50, diff 0 <= 15
+    expect(isRoomSplit(agg)).toBe(true);
+  });
+
+  it('is true when top two differ by exactly 15 points (50 vs 35)', () => {
+    // 20 decisions: 10 automate (50%), 7 hitl (35%), 3 manual (15%)
+    const decisions = [];
+    for (let i = 0; i < 10; i++) decisions.push({ choice: 'automate' });
+    for (let i = 0; i < 7; i++) decisions.push({ choice: 'hitl' });
+    for (let i = 0; i < 3; i++) decisions.push({ choice: 'manual' });
+    const agg = aggregate(decisions);
+    // pcts: 50, 35, 15 -> top two 50 and 35, diff 15 <= 15
+    expect(isRoomSplit(agg)).toBe(true);
+  });
+
+  it('is false when the top bar dominates (top two differ by more than 15)', () => {
+    const decisions = [
+      { choice: 'automate' },
+      { choice: 'automate' },
+      { choice: 'automate' },
+      { choice: 'hitl' },
+    ];
+    // pcts: 75, 25, 0 -> top two 75 and 25, diff 50 > 15
+    const agg = aggregate(decisions);
+    expect(isRoomSplit(agg)).toBe(false);
+  });
+});
+
+describe('buildScoreboard', () => {
+  it('groups by team and sums score per team', () => {
+    const players = [
+      { name: 'Ann', team: 'Alpha', score: 10 },
+      { name: 'Ben', team: 'Beta', score: 30 },
+      { name: 'Cara', team: 'Alpha', score: 25 },
+      { name: 'Dan', team: 'Beta', score: 5 },
+    ];
+    const rows = buildScoreboard(players);
+    // Alpha = 10 + 25 = 35, Beta = 30 + 5 = 35; both rows present
+    expect(rows.length).toBe(2);
+    expect(rows.every((r) => r.score === 35)).toBe(true);
+    expect(rows.map((r) => r.name).sort()).toEqual(['Alpha', 'Beta']);
+  });
+
+  it('sorts teams by descending summed score', () => {
+    const players = [
+      { name: 'Ann', team: 'Alpha', score: 10 },
+      { name: 'Ben', team: 'Beta', score: 30 },
+      { name: 'Cara', team: 'Gamma', score: 50 },
+    ];
+    const rows = buildScoreboard(players);
+    expect(rows).toEqual([
+      { name: 'Gamma', score: 50 },
+      { name: 'Beta', score: 30 },
+      { name: 'Alpha', score: 10 },
+    ]);
+  });
+
+  it('falls back to per-player rows when players have no team', () => {
+    const players = [
+      { name: 'Ann', score: 10 },
+      { name: 'Ben', score: 30 },
+      { name: 'Cara', score: 20 },
+    ];
+    const rows = buildScoreboard(players);
+    expect(rows).toEqual([
+      { name: 'Ben', score: 30 },
+      { name: 'Cara', score: 20 },
+      { name: 'Ann', score: 10 },
+    ]);
+  });
+
+  it('caps the result at 6 rows, highest scores first', () => {
+    const players = [];
+    for (let i = 0; i < 10; i++) {
+      players.push({ name: 'P' + i, team: 'T' + i, score: i });
+    }
+    const rows = buildScoreboard(players);
+    expect(rows.length).toBe(6);
+    // each player on a distinct team; teams T9..T4 are the 6 highest
+    expect(rows.map((r) => r.name)).toEqual(['T9', 'T8', 'T7', 'T6', 'T5', 'T4']);
+  });
+
+  it('returns an empty array for no players', () => {
+    expect(buildScoreboard([])).toEqual([]);
+  });
+});
