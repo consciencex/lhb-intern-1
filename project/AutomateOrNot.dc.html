@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: #D8DFE8; }
+    @keyframes slideInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shake { 0%,100%{ transform: translateX(0); } 18%{ transform: translateX(-7px); } 36%{ transform: translateX(7px); } 54%{ transform: translateX(-5px); } 72%{ transform: translateX(5px); } 90%{ transform: translateX(-2px); } }
+    @keyframes pulseRed { 0%,100%{ box-shadow: 0 0 0 0 rgba(220,38,38,0); } 50%{ box-shadow: 0 0 0 6px rgba(220,38,38,0.15); } }
+  </style>
+</helmet>
+
+<!-- ── Top Nav ── -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:300;background:#0F2554;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;box-shadow:0 2px 16px rgba(0,0,0,0.35);">
+  <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.13em;">AUTOMATE OR NOT?</div>
+  <div style="display:flex;gap:4px;">
+    <button onClick="{{ goPlay }}" style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;background:{{ tabPlayBg }};color:#fff;transition:background 0.2s;">📱 Player</button>
+    <button onClick="{{ goScreen }}" style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;background:{{ tabScreenBg }};color:#fff;transition:background 0.2s;">🖥 Screen</button>
+    <button onClick="{{ goHost }}" style="padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;background:{{ tabHostBg }};color:#fff;transition:background 0.2s;">🎛 Host</button>
+  </div>
+</div>
+<div style="height:52px;"></div>
+
+<!-- ═══════════════ PLAY VIEW ═══════════════ -->
+<sc-if value="{{ isPlay }}" hint-placeholder-val="{{ true }}">
+  <div style="min-height:calc(100vh - 52px);display:flex;justify-content:center;padding:16px 16px 56px;background:#D8DFE8;">
+    <div style="width:100%;max-width:420px;">
+
+      <!-- INTRO SCREEN -->
+      <sc-if value="{{ showIntro }}" hint-placeholder-val="{{ true }}">
+        <div style="animation:slideInUp 0.4s ease;padding-top:4px;">
+          <div style="text-align:center;padding:28px 16px 20px;">
+            <div style="width:60px;height:60px;border-radius:14px;background:#0F2554;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;">🏦</div>
+            <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.13em;margin-bottom:10px;">BANK TRAINING SIMULATION</div>
+            <div style="font-size:34px;font-weight:800;color:#0F2554;line-height:1.1;margin-bottom:10px;letter-spacing:-1px;">Automate<br>or Not?</div>
+            <div style="font-size:14px;color:#64748B;line-height:1.55;max-width:280px;margin:0 auto;">Make critical AI governance decisions as Team Lead. Every choice has consequences.</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <div style="flex:1;background:#fff;border-radius:12px;padding:14px 8px;text-align:center;border:1px solid #E2E8F0;">
+              <div style="font-size:26px;font-weight:800;color:#0F2554;letter-spacing:-1px;">6</div>
+              <div style="font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;margin-top:2px;">SCENARIOS</div>
+            </div>
+            <div style="flex:1;background:#fff;border-radius:12px;padding:14px 8px;text-align:center;border:1px solid #E2E8F0;">
+              <div style="font-size:26px;font-weight:800;color:#0F2554;letter-spacing:-1px;">3</div>
+              <div style="font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;margin-top:2px;">CHOICES</div>
+            </div>
+            <div style="flex:1;background:#fff;border-radius:12px;padding:14px 8px;text-align:center;border:1px solid #E2E8F0;">
+              <div style="font-size:26px;font-weight:800;color:#DC2626;letter-spacing:-1px;">4</div>
+              <div style="font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:0.08em;margin-top:2px;">BREACH RISKS</div>
+            </div>
+          </div>
+          <div style="background:#fff;border-radius:16px;padding:18px;margin-bottom:10px;border:1px solid #E2E8F0;">
+            <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.1em;margin-bottom:8px;">YOUR NAME (optional)</div>
+            <input type="text" placeholder="Enter your name…" onChange="{{ onNameChange }}" style="width:100%;border:2px solid #E2E8F0;border-radius:10px;padding:12px 14px;font-family:inherit;font-size:15px;font-weight:500;color:#1E293B;outline:none;background:#F8FAFC;">
+          </div>
+          <button onClick="{{ startGame }}" style="width:100%;padding:16px;border-radius:14px;border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;background:#0F2554;color:#fff;letter-spacing:0.02em;box-shadow:0 4px 14px rgba(15,37,84,0.25);">Start Simulation →</button>
+        </div>
+      </sc-if>
+
+      <!-- REPORT CARD -->
+      <sc-if value="{{ showReport }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:slideInUp 0.45s ease;">
+          <div style="background:#0F2554;border-radius:20px;padding:28px 24px;margin-bottom:10px;text-align:center;">
+            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.13em;margin-bottom:12px;">MISSION DEBRIEF</div>
+            <div style="font-size:62px;font-weight:800;color:#fff;line-height:1;letter-spacing:-2px;">{{ score }}</div>
+            <div style="font-size:16px;color:rgba(255,255,255,0.45);margin-bottom:8px;">/ {{ maxScore }} pts</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:4px;">{{ playerName }}</div>
+            <div style="font-size:14px;color:rgba(255,255,255,0.75);">{{ correctCount }} of {{ totalQ }} optimal decisions</div>
+            <sc-if value="{{ breachCount }}" hint-placeholder-val="{{ false }}">
+              <div style="background:rgba(220,38,38,0.2);border:1px solid rgba(220,38,38,0.4);border-radius:8px;padding:9px 16px;margin-top:14px;font-size:13px;font-weight:600;color:#FCA5A5;">🚨 {{ breachCount }} compliance breach{{ breachSuffix }} triggered</div>
+            </sc-if>
+          </div>
+          <div style="background:#fff;border-radius:16px;padding:22px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.1em;margin-bottom:18px;">TEAM PERFORMANCE PROFILE</div>
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+                <div style="font-size:13px;font-weight:500;color:#374151;">⚡ Efficiency</div>
+                <div style="font-size:13px;font-weight:700;color:{{ effColor }};">{{ effLabel }}</div>
+              </div>
+              <div style="height:9px;background:#F1F5F9;border-radius:5px;overflow:hidden;"><div style="height:100%;width:{{ effPct }};background:{{ effColor }};border-radius:5px;transition:width 1.1s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+                <div style="font-size:13px;font-weight:500;color:#374151;">⚠️ Risk Control</div>
+                <div style="font-size:13px;font-weight:700;color:{{ riskColor }};">{{ riskLabel }}</div>
+              </div>
+              <div style="height:9px;background:#F1F5F9;border-radius:5px;overflow:hidden;"><div style="height:100%;width:{{ riskSafePct }};background:{{ riskColor }};border-radius:5px;transition:width 1.1s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+                <div style="font-size:13px;font-weight:500;color:#374151;">🛡️ Compliance</div>
+                <div style="font-size:13px;font-weight:700;color:{{ compColor }};">{{ compLabel }}</div>
+              </div>
+              <div style="height:9px;background:#F1F5F9;border-radius:5px;overflow:hidden;"><div style="height:100%;width:{{ compPct }};background:{{ compColor }};border-radius:5px;transition:width 1.1s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+            </div>
+          </div>
+          <button onClick="{{ restart }}" style="width:100%;padding:16px;border-radius:14px;border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;background:#2563EB;color:#fff;letter-spacing:0.02em;">↺  Play Again</button>
+        </div>
+      </sc-if>
+
+      <!-- ACTIVE GAME -->
+      <sc-if value="{{ activeGame }}" hint-placeholder-val="{{ false }}">
+        <div style="height:3px;background:rgba(255,255,255,0.22);border-radius:2px;margin-bottom:14px;overflow:hidden;">
+          <div style="height:100%;width:{{ progW }};background:#3B82F6;border-radius:2px;transition:width 0.55s ease;"></div>
+        </div>
+
+        <div style="opacity:{{ scenOp }};transition:opacity 0.35s ease;">
+          <!-- Scenario card -->
+          <div style="background:#0F2554;border-radius:18px;padding:20px;margin-bottom:10px;box-shadow:0 4px 20px rgba(15,37,84,0.25);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+              <div style="background:rgba(59,130,246,0.28);border-radius:6px;padding:4px 10px;"><span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);letter-spacing:0.06em;">Q{{ qNum }} of {{ qTotal }}</span></div>
+              <div style="background:rgba(255,255,255,0.07);border-radius:20px;padding:4px 12px;"><span style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);">{{ playerName }}</span></div>
+            </div>
+            <div style="font-size:20px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:9px;">{{ title }}</div>
+            <div style="font-size:13.5px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:14px;">{{ desc }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <sc-for list="{{ attrs }}" as="tag" hint-placeholder-count="2">
+                <span style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);border-radius:5px;padding:3px 10px;font-size:12px;font-weight:500;">{{ tag }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="font-size:11px;font-weight:700;color:#64748B;letter-spacing:0.1em;margin-bottom:9px;padding:0 2px;">CHOOSE YOUR APPROACH</div>
+
+          <!-- Choice buttons -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+            <div onClick="{{ pickAuto }}" style="background:{{ autoBg }};border:2px solid {{ autoBd }};border-radius:14px;padding:15px 16px;cursor:{{ btnCursor }};opacity:{{ autoOp }};transition:background 0.2s,border-color 0.2s,opacity 0.2s;display:flex;align-items:center;gap:13px;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+              <div style="width:42px;height:42px;border-radius:11px;background:{{ autoIconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:21px;">⚡</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:700;color:#1E293B;margin-bottom:2px;">Automate Fully</div>
+                <div style="font-size:12px;color:#64748B;line-height:1.4;">Fully automated — no human step</div>
+              </div>
+            </div>
+            <div onClick="{{ pickHitl }}" style="background:{{ hitlBg }};border:2px solid {{ hitlBd }};border-radius:14px;padding:15px 16px;cursor:{{ btnCursor }};opacity:{{ hitlOp }};transition:background 0.2s,border-color 0.2s,opacity 0.2s;display:flex;align-items:center;gap:13px;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+              <div style="width:42px;height:42px;border-radius:11px;background:{{ hitlIconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:21px;">👤</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:700;color:#1E293B;margin-bottom:2px;">Human-in-Loop</div>
+                <div style="font-size:12px;color:#64748B;line-height:1.4;">AI recommends, human reviews and approves</div>
+              </div>
+            </div>
+            <div onClick="{{ pickMan }}" style="background:{{ manBg }};border:2px solid {{ manBd }};border-radius:14px;padding:15px 16px;cursor:{{ btnCursor }};opacity:{{ manOp }};transition:background 0.2s,border-color 0.2s,opacity 0.2s;display:flex;align-items:center;gap:13px;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+              <div style="width:42px;height:42px;border-radius:11px;background:{{ manIconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:21px;">✋</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:700;color:#1E293B;margin-bottom:2px;">Manual Review</div>
+                <div style="font-size:12px;color:#64748B;line-height:1.4;">Officer handles the entire process by hand</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Consequence -->
+          <sc-if value="{{ answered }}" hint-placeholder-val="{{ false }}">
+            <div style="animation:slideInUp 0.38s ease;">
+              <sc-if value="{{ breach }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#FEF2F2;border:2px solid #DC2626;border-radius:14px;padding:17px;margin-bottom:8px;animation:shake 0.5s ease 0.1s,pulseRed 1.5s ease 0.6s 2;">
+                  <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">
+                    <span style="font-size:20px;">🚨</span>
+                    <div style="font-size:13px;font-weight:800;color:#DC2626;letter-spacing:0.06em;">COMPLIANCE BREACH</div>
+                  </div>
+                  <div style="font-size:13px;color:#991B1B;line-height:1.6;margin-bottom:10px;">{{ msg }}</div>
+                  <div style="border-top:1px solid rgba(220,38,38,0.15);padding-top:9px;font-size:12px;color:#B91C1C;"><span style="font-weight:500;">Optimal: </span><span style="font-weight:700;">{{ bestLabel }}</span></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ notBreach }}" hint-placeholder-val="{{ true }}">
+                <div style="background:{{ conseqBg }};border:2px solid {{ conseqBd }};border-radius:14px;padding:16px;margin-bottom:8px;">
+                  <div style="font-size:13px;color:#1E293B;line-height:1.6;">{{ msg }}</div>
+                  <sc-if value="{{ notOk }}" hint-placeholder-val="{{ false }}">
+                    <div style="border-top:1px solid #E2E8F0;padding-top:9px;margin-top:10px;font-size:12px;color:#64748B;"><span style="font-weight:500;">Optimal: </span><span style="font-weight:700;color:#2563EB;">{{ bestLabel }}</span></div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <button onClick="{{ advance }}" style="width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;background:#0F2554;color:#fff;margin-bottom:10px;letter-spacing:0.02em;">Next Scenario →</button>
+            </div>
+          </sc-if>
+
+          <!-- Meters -->
+          <div style="background:#fff;border-radius:16px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.1em;margin-bottom:14px;">TEAM METRICS</div>
+            <div style="margin-bottom:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:13px;font-weight:500;color:#374151;">⚡ Efficiency</div>
+                <div style="font-size:13px;font-weight:700;color:{{ effColor }};">{{ effVal }}</div>
+              </div>
+              <div style="height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden;"><div style="height:100%;width:{{ effPct }};background:{{ effColor }};border-radius:4px;transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:13px;font-weight:500;color:#374151;">⚠️ Risk</div>
+                <div style="font-size:13px;font-weight:700;color:{{ riskColor }};">{{ riskVal }}</div>
+              </div>
+              <div style="height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden;"><div style="height:100%;width:{{ riskPct }};background:{{ riskColor }};border-radius:4px;transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:13px;font-weight:500;color:#374151;">🛡️ Compliance</div>
+                <div style="font-size:13px;font-weight:700;color:{{ compColor }};">{{ compVal }}</div>
+              </div>
+              <div style="height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden;"><div style="height:100%;width:{{ compPct }};background:{{ compColor }};border-radius:4px;transition:width 0.7s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</sc-if>
+
+<!-- ═══════════════════════ SCREEN VIEW ═══════════════════════ -->
+<sc-if value="{{ isScreen }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:calc(100vh - 52px);background:#08121E;display:flex;">
+    <div style="flex:1;padding:44px 48px;border-right:1px solid rgba(255,255,255,0.05);">
+      <div style="font-size:11px;font-weight:700;color:#334155;letter-spacing:0.15em;margin-bottom:8px;">CURRENT SCENARIO · Q{{ qNum }} / {{ qTotal }}</div>
+      <div style="font-size:30px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:12px;">{{ title }}</div>
+      <div style="display:flex;gap:6px;margin-bottom:42px;">
+        <sc-for list="{{ attrs }}" as="tag" hint-placeholder-count="2">
+          <span style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);border-radius:5px;padding:4px 11px;font-size:13px;font-weight:500;">{{ tag }}</span>
+        </sc-for>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#334155;letter-spacing:0.15em;margin-bottom:22px;">ROOM RESPONSE — {{ hostRespondents }} PLAYERS</div>
+      <sc-for list="{{ projBars }}" as="bar" hint-placeholder-count="3">
+        <div style="margin-bottom:22px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:15px;font-weight:600;color:#CBD5E1;">{{ bar.label }}</span>
+            <span style="font-size:16px;font-weight:700;color:#fff;">{{ bar.pctStr }}</span>
+          </div>
+          <div style="height:16px;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;">
+            <div style="height:100%;width:{{ bar.pctStr }};background:{{ bar.color }};border-radius:8px;transition:width 1.3s cubic-bezier(0.34,1.56,0.64,1);"></div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="background:rgba(234,179,8,0.09);border:1px solid rgba(234,179,8,0.22);border-radius:14px;padding:18px;margin-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:#EAB308;letter-spacing:0.1em;margin-bottom:6px;">🔥 DISCUSSION POINT</div>
+        <div style="font-size:15px;color:rgba(255,255,255,0.78);line-height:1.55;">Room is split between Automate and Human-in-Loop. What changes the calculus when regulation and PDPA are involved?</div>
+      </div>
+    </div>
+    <div style="width:272px;padding:44px 24px;flex-shrink:0;">
+      <div style="font-size:11px;font-weight:700;color:#334155;letter-spacing:0.15em;margin-bottom:20px;">SCOREBOARD</div>
+      <sc-for list="{{ scoreboard }}" as="team" hint-placeholder-count="4">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:14px;font-weight:500;color:#94A3B8;">{{ team.name }}</span>
+          <span style="font-size:18px;font-weight:700;color:#fff;">{{ team.score }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ═══════════════════════ HOST VIEW ═══════════════════════ -->
+<sc-if value="{{ isHost }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:calc(100vh - 52px);background:#F1F5F9;display:flex;justify-content:center;padding:32px 16px;">
+    <div style="width:100%;max-width:560px;">
+      <div style="font-size:24px;font-weight:800;color:#0F2554;margin-bottom:4px;">Host Controls</div>
+      <div style="font-size:14px;color:#64748B;margin-bottom:28px;">Automate or Not — Facilitation Panel</div>
+      <div style="display:flex;gap:10px;margin-bottom:18px;">
+        <div style="flex:1;background:#fff;border-radius:14px;padding:18px;border:1px solid #E2E8F0;text-align:center;">
+          <div style="font-size:34px;font-weight:800;color:#0F2554;letter-spacing:-1px;">{{ hostQ }}<span style="font-size:17px;color:#94A3B8;font-weight:400;">/{{ hostTotal }}</span></div>
+          <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.09em;margin-top:3px;">SCENARIO</div>
+        </div>
+        <div style="flex:1;background:#fff;border-radius:14px;padding:18px;border:1px solid #E2E8F0;text-align:center;">
+          <div style="font-size:34px;font-weight:800;color:#16A34A;letter-spacing:-1px;">{{ hostAnswered }}<span style="font-size:17px;color:#94A3B8;font-weight:400;">/{{ hostRespondents }}</span></div>
+          <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.09em;margin-top:3px;">RESPONDED</div>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:20px;margin-bottom:14px;border:1px solid #E2E8F0;">
+        <div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:0.09em;margin-bottom:7px;">NOW PLAYING</div>
+        <div style="font-size:18px;font-weight:700;color:#1E293B;margin-bottom:8px;">{{ title }}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          <sc-for list="{{ attrs }}" as="tag" hint-placeholder-count="2">
+            <span style="background:#F1F5F9;color:#475569;border-radius:4px;padding:3px 9px;font-size:12px;font-weight:500;">{{ tag }}</span>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onClick="{{ advance }}" style="padding:17px 20px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;background:#0F2554;color:#fff;display:flex;align-items:center;justify-content:space-between;"><span>Advance to Next Scenario</span><span>→</span></button>
+        <button style="padding:17px 20px;border-radius:12px;border:2px solid #E2E8F0;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;background:#fff;color:#374151;display:flex;align-items:center;justify-content:space-between;"><span>📊 Reveal Aggregate on Screen</span><span style="background:#E2E8F0;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;color:#64748B;">OFF</span></button>
+        <button style="padding:17px 20px;border-radius:12px;border:2px solid #E2E8F0;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;background:#fff;color:#374151;display:flex;align-items:center;justify-content:space-between;"><span>⏸ Pause Timer</span><span style="font-size:12px;color:#94A3B8;font-weight:500;">2:30 left</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Standard&quot;,&quot;Bold&quot;],&quot;default&quot;:&quot;Standard&quot;}}">
+const SCENARIOS = [
+  { id:'loan', title:'Personal Loan Approval', desc:'Review & approve 80 retail loan applications per day. Each requires income verification and credit scoring.', attrs:['High Risk','Regulated','Medium Volume'], choices:{ automate:{eff:30,risk:30,comp:-35,breach:true,msg:'Automated approvals triggered a BOT regulatory audit. Decisions cannot be explained to the regulator — full portfolio review ordered.'}, hitl:{eff:15,risk:-10,comp:20,breach:false,msg:'AI pre-scores all applications. Officer reviews flagged cases and signs off. Complete audit trail — regulators satisfied.'}, manual:{eff:-20,risk:-5,comp:10,breach:false,msg:'Officers review each case by hand. Backlog reaches 3 days. Customer satisfaction drops significantly.'} }, best:'hitl' },
+  { id:'faq', title:'Customer FAQ Responses', desc:'Handle 500+ customer questions daily — account balance, transfer limits, fee inquiries, branch hours.', attrs:['High Volume','Low Risk','Repetitive'], choices:{ automate:{eff:35,risk:5,comp:5,breach:false,msg:'Chatbot resolves 94% of queries instantly. Response time drops from 4h → 30s. Staff freed for complex cases.'}, hitl:{eff:15,risk:0,comp:5,breach:false,msg:'Bot handles standard questions, agents review edge cases. Slightly slower but high confidence on unusual queries.'}, manual:{eff:-30,risk:0,comp:0,breach:false,msg:'Staff overwhelmed — wait time rises to 4 hours. Burnout risk spikes. Dozens of queries go unanswered daily.'} }, best:'automate' },
+  { id:'aml', title:'Suspicious Transaction Detection', desc:'Flag and escalate potential money laundering cases from the AML monitoring system for investigation.', attrs:['High Risk','Regulated','PDPA Sensitive'], choices:{ automate:{eff:25,risk:35,comp:-40,breach:true,msg:'Auto-blocking froze 23 legitimate accounts. PDPA violation: automated decisions on personal data without human review.'}, hitl:{eff:10,risk:-15,comp:25,breach:false,msg:'AI flags alerts, compliance officer investigates each case. STR filed correctly. Passed regulator inspection.'}, manual:{eff:-25,risk:-10,comp:15,breach:false,msg:'3 suspicious transactions missed due to analyst fatigue. Investigation backlog grows to 2 weeks behind.'} }, best:'hitl' },
+  { id:'statement', title:'Monthly Statement Delivery', desc:'Generate and send 50,000 monthly account statements to customers via email and mobile notification.', attrs:['High Volume','Low Risk','Routine'], choices:{ automate:{eff:35,risk:5,comp:10,breach:false,msg:'Statements auto-generated and delivered on schedule. Zero errors, all confirmed within 2 hours. Cost down 85%.'}, hitl:{eff:10,risk:0,comp:5,breach:false,msg:'Human spot-checks a sample batch before send. Adds 6 hours — catches a rare edge-case formatting bug.'}, manual:{eff:-40,risk:0,comp:0,breach:false,msg:'Physically impossible — 50,000 statements cannot be manually processed in a monthly cycle.'} }, best:'automate' },
+  { id:'kyc', title:'KYC Customer Onboarding', desc:'Verify identity documents for 200 new customers applying for accounts each week under AMLA requirements.', attrs:['Regulated','PDPA Sensitive','Medium Volume'], choices:{ automate:{eff:25,risk:25,comp:-30,breach:true,msg:'OCR incorrectly verified 3 fraudulent IDs. Regulatory breach — AMLA requires human sign-off on KYC final decisions.'}, hitl:{eff:20,risk:-5,comp:20,breach:false,msg:'AI extracts document data, officer confirms each case. Processing time cut 60%. Full compliance maintained.'}, manual:{eff:-15,risk:-5,comp:15,breach:false,msg:'Officers verify every document by hand — 3 working days per application and a 2.1% error rate.'} }, best:'hitl' },
+  { id:'complaint', title:'Formal Complaint Resolution', desc:'Respond to 150 formal customer complaints per month: billing disputes, service failures, fraud claims.', attrs:['High Risk','PDPA Sensitive','Complex'], choices:{ automate:{eff:20,risk:30,comp:-25,breach:true,msg:'Templated bot responses angered 40 customers who escalated to the Bank of Thailand. Regulatory notice issued.'}, hitl:{eff:10,risk:-5,comp:15,breach:false,msg:'AI drafts responses, officer reviews and personalizes each reply. Resolution time halved. Satisfaction up 15%.'}, manual:{eff:-10,risk:-10,comp:10,breach:false,msg:'Thorough but slow — 8-day average resolution. High staff emotional labor. Process cannot scale.'} }, best:'hitl' }
+];
+
+class Component extends DCLogic {
+  state = { intro:true, playerName:'', view:'play', idx:0, choice:null, answered:false, done:false, score:0, meters:{eff:50,risk:50,comp:50}, history:[], transitioning:false };
+
+  componentDidMount() {
+    try { const v=new URLSearchParams(window.location.search).get('view'); if(v&&['play','screen','host'].includes(v)) this.setState({view:v}); } catch(e) {}
+  }
+
+  clamp(v) { return Math.max(0, Math.min(100, Math.round(v))); }
+
+  pick(k) {
+    if (this.state.answered) return;
+    const s=SCENARIOS[this.state.idx], c=s.choices[k], ok=k===s.best;
+    this.setState({ choice:k, answered:true, score:ok?this.state.score+10:this.state.score, meters:{eff:this.clamp(this.state.meters.eff+c.eff),risk:this.clamp(this.state.meters.risk+c.risk),comp:this.clamp(this.state.meters.comp+c.comp)}, history:[...this.state.history,{choice:k,ok,breach:c.breach}] });
+  }
+
+  advance() {
+    const next=this.state.idx+1;
+    if (next>=SCENARIOS.length) { this.setState({done:true}); }
+    else { this.setState({transitioning:true,answered:false,choice:null}); setTimeout(()=>this.setState({idx:next,transitioning:false}),350); }
+  }
+
+  restart() { this.setState({intro:true,playerName:'',idx:0,choice:null,answered:false,done:false,score:0,meters:{eff:50,risk:50,comp:50},history:[],transitioning:false}); }
+  startGame() { this.setState({intro:false}); }
+  setName(e) { this.setState({playerName:e.target.value}); }
+
+  setView(v) {
+    this.setState({view:v});
+    try { const u=new URL(window.location.href); u.searchParams.set('view',v); window.history.replaceState({},'',u.toString()); } catch(e) {}
+  }
+
+  mc(t,v) {
+    if (t==='eff')  return v>=60?'#16A34A':v>=38?'#D97706':'#DC2626';
+    if (t==='risk') return v<=40?'#16A34A':v<=65?'#D97706':'#DC2626';
+    return v>=60?'#16A34A':v>=38?'#D97706':'#DC2626';
+  }
+
+  renderVals() {
+    const {intro,playerName,view,idx,choice,answered,done,score,meters,history,transitioning}=this.state;
+    const S=SCENARIOS, s=S[idx], c=choice?s.choices[choice]:null, ok=c?choice===s.best:null;
+    const correctCount=history.filter(h=>h.ok).length, breachCount=history.filter(h=>h.breach).length;
+    const isBold=(this.props.variant||'Standard')==='Bold';
+    const BL={automate:'Automate Fully',hitl:'Human-in-Loop',manual:'Manual Review'};
+
+    const btnBg=(k)=>{ if(!answered) return !isBold?'#FFFFFF':(k==='automate'?'#EFF6FF':k==='hitl'?'#EDE9FE':'#ECFDF5'); return choice===k?(k===s.best?'#F0FDF4':'#FFF1F2'):'#FFFFFF'; };
+    const btnBd=(k)=>{ if(!answered) return !isBold?'#E2E8F0':(k==='automate'?'#BFDBFE':k==='hitl'?'#C4B5FD':'#A7F3D0'); return choice===k?(k===s.best?'#16A34A':'#DC2626'):'#E2E8F0'; };
+    const btnOp=(k)=>answered&&choice!==k?0.4:1;
+    const iconBg=(k)=>!isBold?(k==='automate'?'#EFF6FF':k==='hitl'?'#EDE9FE':'#ECFDF5'):(k==='automate'?'#2563EB':k==='hitl'?'#7C3AED':'#16A34A');
+
+    return {
+      showIntro: intro,
+      showReport: !intro && done,
+      activeGame: !intro && !done,
+
+      isPlay:view==='play', isScreen:view==='screen', isHost:view==='host',
+      tabPlayBg:view==='play'?'#2563EB':'rgba(255,255,255,0.1)',
+      tabScreenBg:view==='screen'?'#2563EB':'rgba(255,255,255,0.1)',
+      tabHostBg:view==='host'?'#2563EB':'rgba(255,255,255,0.1)',
+      goPlay:()=>this.setView('play'), goScreen:()=>this.setView('screen'), goHost:()=>this.setView('host'),
+
+      playerName: playerName||'Team Lead',
+      startGame:()=>this.startGame(),
+      onNameChange:(e)=>this.setName(e),
+
+      title:s.title, desc:s.desc, attrs:s.attrs,
+      qNum:idx+1, qTotal:S.length,
+      progW:((idx+(answered?1:0))/S.length*100)+'%',
+      scenOp:transitioning?0:1,
+
+      answered, score, maxScore:S.length*10,
+      correctCount, totalQ:S.length,
+      breachCount, breachSuffix:breachCount!==1?'es':'',
+
+      msg:c?c.msg:'', breach:c?c.breach:false, notBreach:c?!c.breach:true,
+      ok, notOk:ok===false, bestLabel:BL[s.best],
+      conseqBg:ok?'#F0FDF4':'#F8FAFC', conseqBd:ok?'#86EFAC':'#E2E8F0',
+
+      autoBg:btnBg('automate'), autoBd:btnBd('automate'), autoOp:btnOp('automate'),
+      hitlBg:btnBg('hitl'),     hitlBd:btnBd('hitl'),     hitlOp:btnOp('hitl'),
+      manBg:btnBg('manual'),    manBd:btnBd('manual'),    manOp:btnOp('manual'),
+      autoIconBg:iconBg('automate'), hitlIconBg:iconBg('hitl'), manIconBg:iconBg('manual'),
+      btnCursor:answered?'default':'pointer',
+
+      pickAuto:()=>this.pick('automate'), pickHitl:()=>this.pick('hitl'), pickMan:()=>this.pick('manual'),
+      advance:()=>this.advance(), restart:()=>this.restart(),
+
+      effPct:meters.eff+'%',   riskPct:meters.risk+'%',  compPct:meters.comp+'%',
+      effVal:meters.eff,       riskVal:meters.risk,       compVal:meters.comp,
+      effColor:this.mc('eff',meters.eff), riskColor:this.mc('risk',meters.risk), compColor:this.mc('comp',meters.comp),
+      riskSafePct:(100-meters.risk)+'%',
+      effLabel:meters.eff>=65?'High Efficiency':meters.eff>=42?'Balanced':'Low Efficiency',
+      riskLabel:meters.risk<=38?'Risk-Aware':meters.risk<=62?'Moderate Risk':'High Risk',
+      compLabel:meters.comp>=65?'Compliant':meters.comp>=42?'Marginal':'At Risk',
+
+      projBars:[{label:'Automate Fully',pct:33,pctStr:'33%',color:'#3B82F6'},{label:'Human-in-Loop',pct:51,pctStr:'51%',color:'#8B5CF6'},{label:'Manual Review',pct:16,pctStr:'16%',color:'#475569'}],
+      scoreboard:[{name:'Team Alpha',score:85},{name:'Team Beta',score:70},{name:'Team Gamma',score:65},{name:'Team Delta',score:55}],
+      hostQ:idx+1, hostTotal:S.length, hostAnswered:22, hostRespondents:30,
+    };
+  }
+}
+</script>
+</body>
+</html>
