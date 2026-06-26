@@ -5,6 +5,11 @@ import '@testing-library/jest-dom';
 import App from './App.jsx';
 import { SCENARIOS } from './content/scenarios.js';
 
+// PRECONDITION (what makes this deterministic, with no vi.mock): under Vitest the
+// Supabase env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) are unset, so
+// getSupabase() returns null and buildGameAPI falls through to the in-memory
+// mock — the seam this test deliberately exercises.
+
 // Rewrite the URL the App reads on mount (via URLSearchParams), then render fresh.
 function renderAppWith(search) {
   window.history.pushState({}, '', search);
