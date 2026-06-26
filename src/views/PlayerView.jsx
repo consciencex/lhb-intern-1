@@ -22,6 +22,9 @@ export default function PlayerView({ gameAPI }) {
   const station = useStation(gameAPI);
   const currentIdx = station ? station.currentIdx : 0;
   const status = station ? station.status : 'lobby';
+  // Solo (single-device) self-paces with a Next button; hosted rooms follow the
+  // host. Default true so a backend without isSolo() behaves as solo.
+  const solo = gameAPI.isSolo ? gameAPI.isSolo() : true;
 
   const [phase, setPhase] = useState('intro');
   const [name, setName] = useState('');
@@ -30,6 +33,7 @@ export default function PlayerView({ gameAPI }) {
   const [history, setHistory] = useState([]);
   const [answered, setAnswered] = useState(false);
   const [choice, setChoice] = useState(null);
+  const [playerId, setPlayerId] = useState(null);
 
   // Reset per-scenario answer state whenever the host (or self-advance) moves on.
   const prevIdxRef = useRef(currentIdx);
@@ -45,11 +49,16 @@ export default function PlayerView({ gameAPI }) {
   const scenario = SCENARIOS[idx];
   const ended = status === 'ended' || idx >= SCENARIOS.length;
   const playerName = name.trim() || 'Team Lead';
+  const myPlayer = station && playerId
+    ? station.players.find((p) => p.id === playerId)
+    : null;
+  const team = myPlayer ? myPlayer.team : null;
   const correctCount = history.filter((h) => h.isBest).length;
   const breachCount = history.filter((h) => h.breach).length;
 
   async function start() {
-    await gameAPI.joinRoom({ name: playerName });
+    const res = await gameAPI.joinRoom({ name: playerName });
+    if (res && res.playerId) setPlayerId(res.playerId);
     setPhase('play');
   }
 
@@ -305,7 +314,7 @@ export default function PlayerView({ gameAPI }) {
           scenario={scenario}
           qNum={idx + 1}
           qTotal={SCENARIOS.length}
-          playerName={playerName}
+          playerName={team ? `${playerName} · ${team}` : playerName}
         />
 
         <div
@@ -331,25 +340,48 @@ export default function PlayerView({ gameAPI }) {
         {answered && (
           <div style={{ animation: 'slideInUp 0.38s ease' }}>
             <ConsequenceCard scenario={scenario} choice={choice} />
-            <button
-              onClick={next}
-              style={{
-                width: '100%',
-                padding: 14,
-                borderRadius: 12,
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 15,
-                fontWeight: 700,
-                background: COLORS.navy,
-                color: COLORS.white,
-                margin: '0 0 10px',
-                letterSpacing: '0.02em',
-              }}
-            >
-              Next Scenario →
-            </button>
+            {solo ? (
+              // Solo self-pacing on one device: the player advances themselves.
+              <button
+                onClick={next}
+                style={{
+                  width: '100%',
+                  padding: 14,
+                  borderRadius: 12,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  background: COLORS.navy,
+                  color: COLORS.white,
+                  margin: '0 0 10px',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Next Scenario →
+              </button>
+            ) : (
+              // Hosted room: the host paces scenarios. The player must NOT
+              // advance the whole room — show a locked/waiting state instead.
+              // They move on automatically when station.currentIdx changes.
+              <div
+                style={{
+                  width: '100%',
+                  padding: 14,
+                  borderRadius: 12,
+                  background: COLORS.white,
+                  border: `1px solid ${COLORS.border}`,
+                  color: COLORS.slate500,
+                  margin: '0 0 10px',
+                  textAlign: 'center',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                ✓ Answer locked — waiting for the host…
+              </div>
+            )}
           </div>
         )}
 

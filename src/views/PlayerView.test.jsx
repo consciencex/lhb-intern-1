@@ -1,6 +1,6 @@
 // src/views/PlayerView.test.jsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PlayerView from './PlayerView.jsx';
 import { createMockGameAPI } from '../game/mockGameAPI.js';
@@ -29,10 +29,11 @@ describe('PlayerView — intro / join', () => {
     expect(screen.queryByText(SCENARIOS[0].title)).not.toBeInTheDocument();
   });
 
-  it('starts scenario 1 (loan) after entering a name and clicking Start', async () => {
+  it('starts scenario 1 (loan) after entering a name and clicking Start, showing name + squad', async () => {
     await startGameAs('Dana');
     expect(screen.getByText(SCENARIOS[0].title)).toBeInTheDocument();
-    expect(screen.getByText('Dana')).toBeInTheDocument();
+    // The scenario header shows the player's name alongside their assigned squad.
+    expect(screen.getByText(/Dana · Team (Alpha|Beta|Gamma|Delta)/)).toBeInTheDocument();
   });
 });
 
@@ -62,8 +63,46 @@ describe('PlayerView — play / pick', () => {
       breach: false,
     });
 
-    // Consequence shown -> Next button appears.
+    // Solo (default) -> Consequence shown and the self-advance Next button appears.
     expect(screen.getByText('Next Scenario →')).toBeInTheDocument();
+  });
+
+  it('hosted (solo:false): after answering shows a waiting-for-host state and NO Next button', async () => {
+    const api = createMockGameAPI({ view: 'play', roomCode: 'DEMO', seed: false, solo: false });
+    render(<PlayerView gameAPI={api} />);
+    fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
+      target: { value: 'Dana' },
+    });
+    fireEvent.click(screen.getByText('Start Simulation →'));
+    await screen.findByText(SCENARIOS[0].title);
+
+    fireEvent.click(screen.getByText('Human-in-Loop'));
+
+    // Consequence still shown, but no room-advancing button — players must not
+    // yank the whole room forward; the host paces scenarios.
+    expect(screen.queryByText('Next Scenario →')).not.toBeInTheDocument();
+    expect(screen.getByText(/waiting for the host/i)).toBeInTheDocument();
+  });
+
+  it('hosted (solo:false): player follows the host advance (answer state resets)', async () => {
+    const api = createMockGameAPI({ view: 'play', roomCode: 'DEMO', seed: false, solo: false });
+    render(<PlayerView gameAPI={api} />);
+    fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
+      target: { value: 'Dana' },
+    });
+    fireEvent.click(screen.getByText('Start Simulation →'));
+    await screen.findByText(SCENARIOS[0].title);
+    fireEvent.click(screen.getByText('Human-in-Loop'));
+    expect(screen.getByText(/waiting for the host/i)).toBeInTheDocument();
+
+    // Host advances the room.
+    await act(async () => {
+      await api.advance();
+    });
+
+    // Player follows to scenario 2 with a fresh (unanswered) choice screen.
+    await screen.findByText(SCENARIOS[1].title);
+    expect(screen.queryByText(/waiting for the host/i)).not.toBeInTheDocument();
   });
 
   it('ignores a second pick after the scenario is answered', async () => {
