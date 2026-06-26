@@ -12,6 +12,8 @@ export default function ScreenView({ gameAPI }) {
   const players = station ? station.players : [];
   const allDecisions = station ? station.decisions : [];
   const respondents = station ? station.respondedCount : 0;
+  const reveal = station ? station.reveal === true : false;
+  const roomCode = station ? station.roomCode : gameAPI.getRoomCode();
 
   const scenario = SCENARIOS[currentIdx] || SCENARIOS[0];
   const qNum = currentIdx + 1;
@@ -38,6 +40,17 @@ export default function ScreenView({ gameAPI }) {
           borderRight: '1px solid rgba(255,255,255,0.05)',
         }}
       >
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#93C5FD',
+            letterSpacing: '0.12em',
+            marginBottom: 14,
+          }}
+        >
+          Join: room {roomCode}
+        </div>
         <div
           style={{
             fontSize: 11,
@@ -78,38 +91,75 @@ export default function ScreenView({ gameAPI }) {
           ))}
         </div>
 
-        <SegmentedBars bars={agg.bars} respondents={respondents} />
+        {reveal ? (
+          <>
+            <SegmentedBars bars={agg.bars} respondents={respondents} />
 
-        {split && (
+            {split && (
+              <div
+                style={{
+                  background: 'rgba(234,179,8,0.09)',
+                  border: '1px solid rgba(234,179,8,0.22)',
+                  borderRadius: 14,
+                  padding: 18,
+                  marginTop: 12,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#EAB308',
+                    letterSpacing: '0.1em',
+                    marginBottom: 6,
+                  }}
+                >
+                  🔥 DISCUSSION POINT
+                </div>
+                <div
+                  style={{
+                    fontSize: 15,
+                    color: 'rgba(255,255,255,0.78)',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  Room is split between Automate and Human-in-Loop. What changes
+                  the calculus when regulation and PDPA are involved?
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          // Hidden until the host reveals: answers come in privately, the host
+          // reveals to discuss, then advancing resets to hidden again.
           <div
             style={{
-              background: 'rgba(234,179,8,0.09)',
-              border: '1px solid rgba(234,179,8,0.22)',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: 14,
-              padding: 18,
-              marginTop: 12,
+              padding: 28,
+              textAlign: 'center',
             }}
           >
             <div
               style={{
-                fontSize: 11,
+                fontSize: 18,
                 fontWeight: 700,
-                color: '#EAB308',
-                letterSpacing: '0.1em',
-                marginBottom: 6,
+                color: 'rgba(255,255,255,0.85)',
+                marginBottom: 8,
               }}
             >
-              🔥 DISCUSSION POINT
+              🔒 Responses hidden
             </div>
             <div
               style={{
-                fontSize: 15,
-                color: 'rgba(255,255,255,0.78)',
-                lineHeight: 1.55,
+                fontSize: 14,
+                color: 'rgba(255,255,255,0.55)',
+                lineHeight: 1.5,
               }}
             >
-              Room is split between Automate and Human-in-Loop. What changes the
-              calculus when regulation and PDPA are involved?
+              {respondents} / {players.length} answered · waiting for facilitator
+              to reveal
             </div>
           </div>
         )}

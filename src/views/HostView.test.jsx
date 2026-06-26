@@ -19,6 +19,13 @@ function renderHost() {
 }
 
 describe('HostView', () => {
+  it('displays the room code near the header so the facilitator can read it out', () => {
+    renderHost();
+    // Room is DEMO (renderHost seeds roomCode 'DEMO').
+    expect(screen.getByText(/Room/i)).toBeInTheDocument();
+    expect(screen.getByText(/DEMO/)).toBeInTheDocument();
+  });
+
   it('shows the SCENARIO stat card as 1 over the total scenario count', () => {
     renderHost();
     const scenarioCard = screen.getByText('SCENARIO').parentElement;

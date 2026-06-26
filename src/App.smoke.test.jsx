@@ -32,8 +32,10 @@ describe('App — view wiring smoke test', () => {
 
   it('mounts the Screen view without crashing', () => {
     renderAppWith('/?view=screen&room=DEMO');
-    // Projector signature header is "ROOM RESPONSE — N PLAYERS" (one text node).
-    expect(screen.getByText(/ROOM RESPONSE/)).toBeInTheDocument();
+    // Projector signature: the join line and the current-scenario header are
+    // always present (the ROOM RESPONSE bars are hidden until the host reveals).
+    expect(screen.getByText(/Join: room/i)).toBeInTheDocument();
+    expect(screen.getByText(/CURRENT SCENARIO/i)).toBeInTheDocument();
     // The first scenario title is shown on the projector.
     expect(screen.getByText(SCENARIOS[0].title)).toBeInTheDocument();
   });

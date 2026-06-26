@@ -35,7 +35,10 @@ describe('App routing', () => {
   it('renders the Screen view when ?view=screen', () => {
     setSearch('view=screen');
     render(<App />);
-    expect(screen.getByText(/ROOM RESPONSE/i)).toBeInTheDocument();
+    // The screen always shows the current-scenario header and the join line
+    // (the ROOM RESPONSE bars are now hidden until the host reveals).
+    expect(screen.getByText(/CURRENT SCENARIO/i)).toBeInTheDocument();
+    expect(screen.getByText(/Join: room/i)).toBeInTheDocument();
   });
 
   it('switches the rendered view when a TopNav tab is clicked', () => {

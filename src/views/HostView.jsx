@@ -19,6 +19,7 @@ export default function HostView({ gameAPI }) {
   const respondedCount = station.respondedCount;
   const playerCount = station.players.length;
   const reveal = station.reveal;
+  const roomCode = station.roomCode || gameAPI.getRoomCode();
 
   const onAdvance = () => {
     gameAPI.advance();
@@ -42,13 +43,36 @@ export default function HostView({ gameAPI }) {
       <div style={{ width: '100%', maxWidth: 560 }}>
         <div
           style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: COLORS.navy,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
             marginBottom: 4,
           }}
         >
-          Host Controls
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: COLORS.navy,
+            }}
+          >
+            Host Controls
+          </div>
+          <div
+            style={{
+              background: COLORS.white,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 10,
+              padding: '6px 12px',
+              fontSize: 13,
+              fontWeight: 700,
+              color: COLORS.navy,
+              letterSpacing: '0.04em',
+            }}
+          >
+            Room{' '}
+            <span style={{ letterSpacing: '0.12em' }}>{roomCode}</span>
+          </div>
         </div>
         <div
           style={{
