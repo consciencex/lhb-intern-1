@@ -183,16 +183,20 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     return 'Team ' + TEAMS[hash % TEAMS.length];
   }
 
-  async function joinRoom({ name }) {
+  async function joinRoom({ name, team }) {
     if (!roomId) await loadRoom();
     if (!roomId) return { playerId: null };
+
+    // Honor the squad the player picked on the intro screen. teamFor(clientId)
+    // remains only as a deterministic fallback if no team is supplied.
+    const chosenTeam = team || teamFor(clientId);
 
     // Idempotent: one player row per (room_id, client_id). Upsert on conflict
     // so a reconnecting device reuses its existing row instead of erroring.
     const { data, error } = await supabase
       .from('players')
       .upsert(
-        { room_id: roomId, name, client_id: clientId, team: teamFor(clientId) },
+        { room_id: roomId, name, client_id: clientId, team: chosenTeam },
         { onConflict: 'room_id,client_id' },
       )
       .select('id')

@@ -295,7 +295,7 @@ describe('createSupabaseGameAPI — advance resets reveal & joinRoom assigns tea
     expect(last.current_idx).toBe(1);
   });
 
-  it('joinRoom() includes a deterministic Team in the upserted row', async () => {
+  it('joinRoom() includes a Team in the upserted row (fallback when none chosen)', async () => {
     const captured = { roomUpdates: [], playerUpserts: [] };
     const supabase = makeCaptureStub(captured);
     const api = createSupabaseGameAPI({ view: 'play', roomCode: 'DEMO', supabase });
@@ -303,6 +303,17 @@ describe('createSupabaseGameAPI — advance resets reveal & joinRoom assigns tea
     expect(captured.playerUpserts.length).toBeGreaterThan(0);
     const row = captured.playerUpserts[captured.playerUpserts.length - 1];
     expect(row.team).toMatch(/^Team (Alpha|Beta|Gamma|Delta)$/);
+    expect(row.name).toBe('Dana');
+  });
+
+  it('joinRoom() stores the explicitly CHOSEN team in the upserted players.team column', async () => {
+    const captured = { roomUpdates: [], playerUpserts: [] };
+    const supabase = makeCaptureStub(captured);
+    const api = createSupabaseGameAPI({ view: 'play', roomCode: 'DEMO', supabase });
+    await api.joinRoom({ name: 'Dana', team: 'Team Delta' });
+    const row = captured.playerUpserts[captured.playerUpserts.length - 1];
+    // The chosen squad must reach the DB verbatim — not a hash of the client id.
+    expect(row.team).toBe('Team Delta');
     expect(row.name).toBe('Dana');
   });
 });

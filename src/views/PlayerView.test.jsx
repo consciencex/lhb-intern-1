@@ -10,11 +10,17 @@ function makeApi() {
   return createMockGameAPI({ view: 'play', roomCode: 'DEMO', seed: false });
 }
 
-async function startGameAs(name) {
+// A team MUST be chosen before Start is enabled. Default to Team Alpha.
+function chooseTeam(name = 'Team Alpha') {
+  fireEvent.click(screen.getByTestId(`team-option-${name}`));
+}
+
+async function startGameAs(name, team = 'Team Alpha') {
   const api = makeApi();
   render(<PlayerView gameAPI={api} />);
   const input = screen.getByPlaceholderText('Enter your name…');
   fireEvent.change(input, { target: { value: name } });
+  chooseTeam(team);
   fireEvent.click(screen.getByText('Start Simulation →'));
   await screen.findByText(SCENARIOS[0].title);
   return api;
@@ -36,24 +42,63 @@ describe('PlayerView — intro / join', () => {
     expect(screen.queryByText(SCENARIOS[0].title)).not.toBeInTheDocument();
   });
 
-  it('Start calls joinRoom so a player row exists for the scoreboard', async () => {
+  it('Start calls joinRoom with the chosen team so a player row exists for the scoreboard', async () => {
     const api = makeApi();
     const joinSpy = vi.spyOn(api, 'joinRoom');
     render(<PlayerView gameAPI={api} />);
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    chooseTeam('Team Gamma');
     fireEvent.click(screen.getByText('Start Simulation →'));
     await screen.findByText(SCENARIOS[0].title);
     expect(joinSpy).toHaveBeenCalledTimes(1);
-    expect(joinSpy).toHaveBeenCalledWith({ name: 'Dana' });
+    expect(joinSpy).toHaveBeenCalledWith({ name: 'Dana', team: 'Team Gamma' });
   });
 
-  it('starts scenario 1 (loan) after entering a name and clicking Start, showing name + squad', async () => {
-    await startGameAs('Dana');
+  it('starts scenario 1 (loan) after entering a name + choosing a squad, showing name + chosen squad', async () => {
+    await startGameAs('Dana', 'Team Beta');
     expect(screen.getByText(SCENARIOS[0].title)).toBeInTheDocument();
-    // The scenario header shows the player's name alongside their assigned squad.
-    expect(screen.getByText(/Dana · Team (Alpha|Beta|Gamma|Delta)/)).toBeInTheDocument();
+    // The scenario header shows the player's name alongside the CHOSEN squad.
+    expect(screen.getByText('Dana · Team Beta')).toBeInTheDocument();
+  });
+});
+
+describe('PlayerView — squad selection gating', () => {
+  it('renders a CHOOSE YOUR SQUAD section with all four selectable team options', () => {
+    render(<PlayerView gameAPI={makeApi()} />);
+    expect(screen.getByText(/CHOOSE YOUR SQUAD/i)).toBeInTheDocument();
+    ['Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta'].forEach((name) => {
+      expect(screen.getByTestId(`team-option-${name}`)).toBeInTheDocument();
+    });
+  });
+
+  it('disables Start until a squad is chosen, then enables it (name stays optional)', () => {
+    const api = makeApi();
+    const joinSpy = vi.spyOn(api, 'joinRoom');
+    render(<PlayerView gameAPI={api} />);
+    const startBtn = screen.getByText('Start Simulation →');
+
+    // No squad chosen yet — Start is disabled and clicking does nothing.
+    expect(startBtn).toBeDisabled();
+    fireEvent.click(startBtn);
+    expect(joinSpy).not.toHaveBeenCalled();
+    expect(screen.queryByText(SCENARIOS[0].title)).not.toBeInTheDocument();
+
+    // Choosing a squad enables Start even with no name entered.
+    chooseTeam('Team Delta');
+    expect(startBtn).not.toBeDisabled();
+  });
+
+  it('joins with the chosen team even when no name is entered (name optional)', async () => {
+    const api = makeApi();
+    const joinSpy = vi.spyOn(api, 'joinRoom');
+    render(<PlayerView gameAPI={api} />);
+    chooseTeam('Team Alpha');
+    fireEvent.click(screen.getByText('Start Simulation →'));
+    await screen.findByText(SCENARIOS[0].title);
+    // Default display name is used; the chosen team is passed through.
+    expect(joinSpy).toHaveBeenCalledWith({ name: 'Team Lead', team: 'Team Alpha' });
   });
 });
 
@@ -67,6 +112,7 @@ describe('PlayerView — self-paced play / pick', () => {
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    chooseTeam();
     fireEvent.click(screen.getByText('Start Simulation →'));
     await screen.findByText(SCENARIOS[0].title);
 
@@ -94,6 +140,7 @@ describe('PlayerView — self-paced play / pick', () => {
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    chooseTeam();
     fireEvent.click(screen.getByText('Start Simulation →'));
     await screen.findByText(SCENARIOS[0].title);
 
@@ -117,6 +164,7 @@ describe('PlayerView — self-paced play / pick', () => {
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    chooseTeam();
     fireEvent.click(screen.getByText('Start Simulation →'));
     await screen.findByText(SCENARIOS[0].title);
 
@@ -134,6 +182,7 @@ describe('PlayerView — self-paced play / pick', () => {
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    chooseTeam();
     fireEvent.click(screen.getByText('Start Simulation →'));
 
     // Answer every scenario with its best choice, then self-advance.

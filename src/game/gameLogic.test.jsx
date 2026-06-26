@@ -13,6 +13,7 @@ import {
   optimalRate,
   isRoomSplit,
   buildScoreboard,
+  teamStandings,
 } from './gameLogic';
 import { COLORS } from '../theme';
 
@@ -417,5 +418,123 @@ describe('buildScoreboard', () => {
 
   it('returns an empty array for no players', () => {
     expect(buildScoreboard([])).toEqual([]);
+  });
+});
+
+describe('teamStandings', () => {
+  it('returns [] for empty players and empty decisions', () => {
+    expect(teamStandings([], [])).toEqual([]);
+  });
+
+  it('returns [] when there are no players (even if stray decisions exist)', () => {
+    const decisions = [{ playerId: 'ghost', isBest: true }];
+    expect(teamStandings([], decisions)).toEqual([]);
+  });
+
+  it('aggregates one row per team: player count, summed score, response count, optimalRate', () => {
+    const players = [
+      { id: 'a', name: 'Ann', team: 'Team Alpha', score: 20 },
+      { id: 'b', name: 'Ben', team: 'Team Alpha', score: 10 },
+      { id: 'c', name: 'Cara', team: 'Team Beta', score: 30 },
+    ];
+    const decisions = [
+      { playerId: 'a', isBest: true },
+      { playerId: 'a', isBest: false },
+      { playerId: 'b', isBest: true },
+      { playerId: 'c', isBest: true },
+      { playerId: 'c', isBest: true },
+    ];
+    const rows = teamStandings(players, decisions);
+    const alpha = rows.find((r) => r.team === 'Team Alpha');
+    const beta = rows.find((r) => r.team === 'Team Beta');
+
+    expect(alpha).toEqual({
+      team: 'Team Alpha',
+      players: 2,
+      score: 30,
+      responses: 3,
+      optimalRate: 2 / 3,
+    });
+    expect(beta).toEqual({
+      team: 'Team Beta',
+      players: 1,
+      score: 30,
+      responses: 2,
+      optimalRate: 1,
+    });
+  });
+
+  it('sorts by score desc', () => {
+    const players = [
+      { id: 'a', team: 'Team Alpha', score: 10 },
+      { id: 'b', team: 'Team Beta', score: 50 },
+      { id: 'c', team: 'Team Gamma', score: 30 },
+    ];
+    const rows = teamStandings(players, []);
+    expect(rows.map((r) => r.team)).toEqual([
+      'Team Beta',
+      'Team Gamma',
+      'Team Alpha',
+    ]);
+  });
+
+  it('breaks score ties by optimalRate desc', () => {
+    const players = [
+      { id: 'a', team: 'Team Alpha', score: 20 },
+      { id: 'b', team: 'Team Beta', score: 20 },
+    ];
+    const decisions = [
+      // Alpha: 1 of 2 best -> 0.5
+      { playerId: 'a', isBest: true },
+      { playerId: 'a', isBest: false },
+      // Beta: 2 of 2 best -> 1.0
+      { playerId: 'b', isBest: true },
+      { playerId: 'b', isBest: true },
+    ];
+    const rows = teamStandings(players, decisions);
+    expect(rows.map((r) => r.team)).toEqual(['Team Beta', 'Team Alpha']);
+  });
+
+  it('optimalRate is 0 (no divide-by-zero) for a team with players but no responses', () => {
+    const players = [{ id: 'a', team: 'Team Alpha', score: 0 }];
+    const rows = teamStandings(players, []);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].responses).toBe(0);
+    expect(rows[0].optimalRate).toBe(0);
+  });
+
+  it('only includes teams that have at least one player', () => {
+    const players = [{ id: 'a', team: 'Team Alpha', score: 0 }];
+    // A decision from a player NOT in the roster must not invent a team row.
+    const decisions = [{ playerId: 'zzz', isBest: true }];
+    const rows = teamStandings(players, decisions);
+    expect(rows.map((r) => r.team)).toEqual(['Team Alpha']);
+    expect(rows[0].responses).toBe(0);
+  });
+
+  it('attributes each decision to its player\'s team via playerId', () => {
+    const players = [
+      { id: 'a', team: 'Team Alpha', score: 0 },
+      { id: 'b', team: 'Team Beta', score: 0 },
+    ];
+    const decisions = [
+      { playerId: 'a', isBest: true },
+      { playerId: 'b', isBest: false },
+      { playerId: 'b', isBest: true },
+    ];
+    const rows = teamStandings(players, decisions);
+    const alpha = rows.find((r) => r.team === 'Team Alpha');
+    const beta = rows.find((r) => r.team === 'Team Beta');
+    expect(alpha.responses).toBe(1);
+    expect(beta.responses).toBe(2);
+  });
+
+  it('ignores players without a team (no undefined team row)', () => {
+    const players = [
+      { id: 'a', team: 'Team Alpha', score: 5 },
+      { id: 'b', score: 99 }, // no team
+    ];
+    const rows = teamStandings(players, []);
+    expect(rows.map((r) => r.team)).toEqual(['Team Alpha']);
   });
 });

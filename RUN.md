@@ -11,17 +11,20 @@ The game is **fully self-paced — there is no host.** Each player moves through
 the six scenarios at their own speed using a **"Next Scenario →"** button after
 answering; nobody has to wait for anyone. As soon as a player answers, the
 projector's dashboard updates **live and immediately** — there is no "reveal"
-step and nothing is hidden. Each joining device is auto-assigned a **squad**
-(Team Alpha / Beta / Gamma / Delta) so the projector scoreboard ranks squads. The
-**room code** is shown on the Screen ("Join: room DEMO") so the facilitator can
-read it out, and a **"Scan to join" QR code** on the Screen lets interns scan to
-open the player URL.
+step and nothing is hidden. On the intro screen each player **chooses their own
+squad** (Team Alpha / Beta / Gamma / Delta) — Start is disabled until a squad is
+picked (name stays optional) — and the projector's **TEAM STANDINGS** panel ranks
+those squads. The **room code** is shown on the Screen ("Join: room DEMO") so the
+facilitator can read it out, and a **"Scan to join" QR code** on the Screen lets
+interns scan to open the player URL.
 
 The **Screen is a live, always-on results dashboard**: a summary bar (players
 joined, total responses, and the overall **"chose the optimal approach" rate** —
 the teaching takeaway), a compact **live card for every one of the six
-scenarios** (response breakdown bars for Automate / Human-in-Loop / Manual, the
-response count, and a ★ marker on the optimal answer), and the squad scoreboard.
+scenarios** (each with a flat scenario illustration, response breakdown bars for
+Automate / Human-in-Loop / Manual, the response count, and a ★ marker on the
+optimal answer), and the **TEAM STANDINGS** panel (each squad's score, player
+count and optimal %).
 Everything is visible from the start and updates in real time as answers arrive.
 
 Two URL-selected views share one app:
@@ -61,9 +64,9 @@ each in its own tab/window:
 - Player: <http://localhost:5173/?view=play>
 - Screen: <http://localhost:5173/?view=screen>
 
-Everything renders and is interactive immediately (intro → self-paced play →
-report on the player; the live all-scenarios dashboard and scoreboard on the
-screen). The Screen tab is pre-seeded with demo data so the dashboard looks
+Everything renders and is interactive immediately (intro → choose squad →
+self-paced play → report on the player; the live all-scenarios dashboard and
+team standings on the screen). The Screen tab is pre-seeded with demo data so the dashboard looks
 alive. Because the mock is in-memory and per-tab, the tabs are **not** connected
 to each other — this mode is for trying it out and rehearsing each screen, not
 real multiplayer. For that, set up Supabase (next section).
@@ -209,9 +212,10 @@ players drive themselves.
 
 1. **Players can join from 2+ devices.**
    Open the phone URL (`?view=play&room=DEMO`) on **two** phones / profiles (or
-   scan the projector's QR). Enter a name on each and tap **Start Simulation →**.
-   On the **Screen** view the **PLAYERS JOINED** total rises as each joins and the
-   scoreboard begins to populate.
+   scan the projector's QR). Enter a name (optional) and **choose a squad** on
+   each — **Start Simulation →** stays disabled until a squad is picked — then tap
+   it. On the **Screen** view the **PLAYERS JOINED** total rises as each joins and
+   the **TEAM STANDINGS** panel begins to populate.
 
 2. **Players are self-paced (no host, no waiting).**
    On a phone, answer scenario 1, then tap **Next Scenario →**. That device moves
@@ -226,8 +230,9 @@ players drive themselves.
    reveal: the matching scenario's live card shows the response bars and count
    change, **TOTAL RESPONSES** ticks up, and the overall **"chose the optimal
    approach" rate** recomputes. The ★ marker on each card always points at the
-   optimal answer so viewers learn where AI belongs. The scoreboard ranks
-   **squads** (Team Alpha / Beta / Gamma / Delta), auto-assigned on join.
+   optimal answer so viewers learn where AI belongs. The **TEAM STANDINGS** panel
+   ranks the four **squads** (Team Alpha / Beta / Gamma / Delta) — each player
+   chose their own squad at join — by score, with player count and optimal %.
 
 4. **Breach card appears on a bad high-risk pick.**
    On a phone, advance to a **high-risk** scenario (e.g. **Suspicious Transaction

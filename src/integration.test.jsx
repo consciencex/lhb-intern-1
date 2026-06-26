@@ -36,6 +36,8 @@ describe('integration — one shared GameAPI, Screen + Player, no host', () => {
     fireEvent.change(within(player).getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    // A squad must be chosen before Start is enabled.
+    fireEvent.click(within(player).getByTestId('team-option-Team Alpha'));
     await act(async () => {
       fireEvent.click(within(player).getByText('Start Simulation →'));
     });
@@ -69,6 +71,8 @@ describe('integration — one shared GameAPI, Screen + Player, no host', () => {
     fireEvent.change(within(player).getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
     });
+    // A squad must be chosen before Start is enabled.
+    fireEvent.click(within(player).getByTestId('team-option-Team Alpha'));
     await act(async () => {
       fireEvent.click(within(player).getByText('Start Simulation →'));
     });

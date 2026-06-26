@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { COLORS, FONT } from '../theme.js';
 import { SCENARIOS } from '../content/scenarios.js';
+import { TEAMS } from '../content/teams.js';
 import {
   START_METERS,
   POINTS_PER_BEST,
@@ -26,6 +27,7 @@ export default function PlayerView({ gameAPI }) {
 
   const [phase, setPhase] = useState('intro');
   const [name, setName] = useState('');
+  const [squad, setSquad] = useState(null); // chosen team NAME, e.g. 'Team Alpha'
   const [idx, setIdx] = useState(0); // LOCAL scenario index 0..SCENARIOS.length-1
   const [meters, setMeters] = useState(START_METERS);
   const [score, setScore] = useState(0);
@@ -45,7 +47,10 @@ export default function PlayerView({ gameAPI }) {
   const breachCount = history.filter((h) => h.breach).length;
 
   async function start() {
-    const res = await gameAPI.joinRoom({ name: playerName });
+    // A squad must be chosen first — Start is disabled until then, but guard
+    // here too so a programmatic call can't skip the requirement.
+    if (!squad) return;
+    const res = await gameAPI.joinRoom({ name: playerName, team: squad });
     if (res && res.playerId) setPlayerId(res.playerId);
     setPhase('play');
   }
@@ -53,6 +58,7 @@ export default function PlayerView({ gameAPI }) {
   function restart() {
     setPhase('intro');
     setName('');
+    setSquad(null);
     setIdx(0);
     setMeters(START_METERS);
     setScore(0);
@@ -234,21 +240,109 @@ export default function PlayerView({ gameAPI }) {
               }}
             />
           </div>
+
+          {/* CHOOSE YOUR SQUAD — a team must be picked before Start is enabled. */}
+          <div
+            style={{
+              background: COLORS.white,
+              borderRadius: 16,
+              padding: 18,
+              marginBottom: 10,
+              border: `1px solid ${COLORS.border}`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: COLORS.slate400,
+                letterSpacing: '0.1em',
+                marginBottom: 10,
+              }}
+            >
+              CHOOSE YOUR SQUAD
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 8,
+              }}
+            >
+              {TEAMS.map((t) => {
+                const selected = squad === t.name;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    data-testid={`team-option-${t.name}`}
+                    aria-pressed={selected}
+                    onClick={() => setSquad(t.name)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 9,
+                      padding: '11px 12px',
+                      borderRadius: 11,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      background: selected ? `${t.color}14` : '#F8FAFC',
+                      border: selected
+                        ? `2px solid ${t.color}`
+                        : `2px solid ${COLORS.border}`,
+                      boxShadow: selected
+                        ? `0 2px 10px ${t.color}33`
+                        : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 5,
+                        background: t.color,
+                        flexShrink: 0,
+                        boxShadow: selected
+                          ? `0 0 0 3px ${t.color}33`
+                          : 'none',
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: 700,
+                        color: selected ? COLORS.navy : COLORS.slate500,
+                        letterSpacing: '-0.01em',
+                      }}
+                    >
+                      {t.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <button
             onClick={start}
+            disabled={!squad}
             style={{
               width: '100%',
               padding: 16,
               borderRadius: 14,
               border: 'none',
-              cursor: 'pointer',
+              cursor: squad ? 'pointer' : 'not-allowed',
               fontFamily: 'inherit',
               fontSize: 16,
               fontWeight: 700,
-              background: COLORS.navy,
+              background: squad ? COLORS.navy : '#94A3B8',
               color: COLORS.white,
               letterSpacing: '0.02em',
-              boxShadow: '0 4px 14px rgba(15,37,84,0.25)',
+              opacity: squad ? 1 : 0.6,
+              boxShadow: squad ? '0 4px 14px rgba(15,37,84,0.25)' : 'none',
+              transition: 'all 0.2s ease',
             }}
           >
             Start Simulation →

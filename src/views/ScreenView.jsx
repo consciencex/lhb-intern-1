@@ -3,11 +3,12 @@ import { SCENARIOS, CHOICE_LABELS } from '../content/scenarios.js';
 import {
   aggregateByScenario,
   optimalRate,
-  buildScoreboard,
+  teamStandings,
 } from '../game/gameLogic.js';
 import { useStation } from '../hooks/useStation.js';
-import Scoreboard from '../components/Scoreboard.jsx';
+import TeamStandings from '../components/TeamStandings.jsx';
 import JoinQR from '../components/JoinQR.jsx';
+import ScenarioArt from '../components/ScenarioArt.jsx';
 
 /**
  * Live, real-time results dashboard for the projector. Everything is always
@@ -24,8 +25,10 @@ export default function ScreenView({ gameAPI }) {
   const decisions = station ? station.decisions : [];
   const roomCode = station ? station.roomCode : gameAPI.getRoomCode();
 
+  // Recompute over the raw arrays every render — useStation shallow-snapshots,
+  // so decisions/players keep identity when the backend mutates in place.
   const perScenario = aggregateByScenario(decisions, SCENARIOS.length);
-  const teams = buildScoreboard(players);
+  const standings = teamStandings(players, decisions);
   const optimalPct = Math.round(optimalRate(decisions) * 100);
 
   return (
@@ -155,14 +158,37 @@ export default function ScreenView({ gameAPI }) {
                 </div>
                 <div
                   style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: '#FFFFFF',
-                    lineHeight: 1.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 11,
                     marginBottom: 12,
                   }}
                 >
-                  {scenario.title}
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      background: 'rgba(59,130,246,0.10)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <ScenarioArt id={scenario.id} size={30} />
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: '#FFFFFF',
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {scenario.title}
+                  </div>
                 </div>
 
                 {agg.bars.map((bar) => {
@@ -242,7 +268,7 @@ export default function ScreenView({ gameAPI }) {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
           <JoinQR roomCode={roomCode} size={180} />
         </div>
-        <Scoreboard teams={teams} />
+        <TeamStandings standings={standings} />
       </div>
     </div>
   );

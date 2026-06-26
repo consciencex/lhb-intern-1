@@ -1,4 +1,5 @@
 import { COLORS, FONT } from '../theme.js';
+import ScenarioArt from './ScenarioArt.jsx';
 
 export default function ScenarioCard({ scenario, qNum, qTotal, playerName }) {
   return (
@@ -58,24 +59,51 @@ export default function ScenarioCard({ scenario, qNum, qTotal, playerName }) {
       </div>
       <div
         style={{
-          fontSize: '20px',
-          fontWeight: 700,
-          color: '#fff',
-          lineHeight: 1.3,
-          marginBottom: '9px',
-        }}
-      >
-        {scenario.title}
-      </div>
-      <div
-        style={{
-          fontSize: '13.5px',
-          color: 'rgba(255,255,255,0.65)',
-          lineHeight: 1.6,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '14px',
           marginBottom: '14px',
         }}
       >
-        {scenario.desc}
+        {/* Illustration inset: a rounded badge that elevates the card without
+            disturbing the title/desc copy beside it. */}
+        <div
+          style={{
+            flexShrink: 0,
+            width: '76px',
+            height: '76px',
+            borderRadius: '14px',
+            background: 'rgba(59,130,246,0.10)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ScenarioArt id={scenario.id} size={58} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              color: '#fff',
+              lineHeight: 1.3,
+              marginBottom: '7px',
+            }}
+          >
+            {scenario.title}
+          </div>
+          <div
+            style={{
+              fontSize: '13.5px',
+              color: 'rgba(255,255,255,0.65)',
+              lineHeight: 1.55,
+            }}
+          >
+            {scenario.desc}
+          </div>
+        </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
         {scenario.attrs.map((tag) => (

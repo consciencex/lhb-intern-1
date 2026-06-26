@@ -42,7 +42,9 @@ import { createSupabaseGameAPI } from './supabaseGameAPI.js';
  *           button). False for a hosted/multiplayer room where the host paces
  *           the room and players follow station.currentIdx.
  * @property {() => string|null} getRoomCode
- * @property {(args: { name: string }) => Promise<{ playerId: string }>} joinRoom
+ * @property {(args: { name: string, team?: string }) => Promise<{ playerId: string }>} joinRoom
+ *           team is the chosen squad's display NAME (e.g. 'Team Alpha'). When
+ *           omitted, the backend falls back to a deterministic id-hash squad.
  * @property {(event: string, payload: object) => Promise<void>} emit
  *           emit('decision', { scenarioId, scenarioIdx, choice, isBest, breach })
  * @property {(points: number) => Promise<void>} award

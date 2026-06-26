@@ -5,7 +5,7 @@ import ScreenView from './ScreenView.jsx';
 import { createMockGameAPI } from '../game/mockGameAPI.js';
 import { SCENARIOS } from '../content/scenarios.js';
 import { CHOICE_LABELS } from '../content/scenarios.js';
-import { optimalRate } from '../game/gameLogic.js';
+import { optimalRate, teamStandings } from '../game/gameLogic.js';
 
 afterEach(cleanup);
 
@@ -38,6 +38,16 @@ describe('ScreenView — live all-scenarios dashboard (no reveal gating)', () =>
       }
     });
     expect(scenariosWithNonZeroBar).toBeGreaterThan(1);
+  });
+
+  it('shows the cohesive scenario illustration on each per-scenario card', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    const cards = screen.getAllByTestId('scenario-result');
+    cards.forEach((card, i) => {
+      const art = card.querySelector('[data-testid="scenario-art"]');
+      expect(art).not.toBeNull();
+      expect(art).toHaveAttribute('data-art-id', SCENARIOS[i].id);
+    });
   });
 
   it('marks the BEST/optimal answer on each scenario card', () => {
@@ -83,10 +93,36 @@ describe('ScreenView — live all-scenarios dashboard (no reveal gating)', () =>
     expect(screen.getByTestId('optimal-rate')).toHaveTextContent(`${pct}%`);
   });
 
-  it('renders the scoreboard with at least one team row', () => {
-    render(<ScreenView gameAPI={seededScreen()} />);
-    expect(screen.getByText('SCOREBOARD')).toBeInTheDocument();
-    expect(screen.getAllByTestId('score-row').length).toBeGreaterThan(0);
+  it('renders a TEAM STANDINGS panel with one row per team from real station data', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    const standings = teamStandings(station.players, station.decisions);
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    expect(screen.getByText(/TEAM STANDINGS/i)).toBeInTheDocument();
+    const rows = screen.getAllByTestId('team-standing-row');
+    expect(rows).toHaveLength(standings.length);
+    expect(standings.length).toBeGreaterThan(1); // seeded demo spans 4 squads
+  });
+
+  it('each team-standings row shows team name, score, player count and optimal %', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    const standings = teamStandings(station.players, station.decisions);
+    render(<ScreenView gameAPI={gameAPI} />);
+    const rows = screen.getAllByTestId('team-standing-row');
+
+    // Rows are rendered in teamStandings order (score desc). Assert each row's
+    // content matches the corresponding standings entry derived from real data.
+    standings.forEach((s, i) => {
+      const row = rows[i];
+      expect(within(row).getByText(s.team)).toBeInTheDocument();
+      expect(within(row).getByTestId('team-score')).toHaveTextContent(String(s.score));
+      expect(within(row).getByTestId('team-players')).toHaveTextContent(String(s.players));
+      expect(within(row).getByTestId('team-optimal')).toHaveTextContent(
+        `${Math.round(s.optimalRate * 100)}%`,
+      );
+    });
   });
 
   it('shows the room code prominently so players know which room to join', () => {

@@ -1,11 +1,15 @@
 # Automate or Not?
 
 A live, in-room workshop game for ~30 bank interns. Each player is a **Team
-Lead** on their **phone** and plays **self-paced** — no host, no waiting. A
-**projector** shows a **live results dashboard**: every answer shows up instantly
-with per-scenario response breakdowns, an overall "chose the optimal approach"
-rate, and a team scoreboard. Players read a banking work scenario (loan
-approvals, AML monitoring, KYC, complaints, …), pick one of three approaches —
+Lead** on their **phone** and plays **self-paced** — no host, no waiting. On the
+intro screen the player enters an optional name and **chooses one of four squads**
+(Team Alpha / Beta / Gamma / Delta) before starting. A **projector** shows a
+**live results dashboard**: every answer shows up instantly with per-scenario
+response breakdowns, an overall "chose the optimal approach" rate, and a
+**TEAM STANDINGS** panel that ranks the four squads by score (with player count
+and each squad's optimal %). Players read a banking work scenario (loan
+approvals, AML monitoring, KYC, complaints, …), each shown with a clean flat
+illustration, pick one of three approaches —
 **Automate Fully / Human-in-Loop / Manual Review** — and immediately see the
 consequence, three personal meters move, and a red **COMPLIANCE BREACH** card on
 a bad high-risk choice, then advance themselves to the next scenario. At the end

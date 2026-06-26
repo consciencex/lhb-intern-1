@@ -135,6 +135,59 @@ export function isRoomSplit(agg) {
   return pcts[0] - pcts[1] <= 15;
 }
 
+/**
+ * Aggregate standings BY TEAM for the Screen.
+ *
+ * Pure: derives everything from the raw players + decisions arrays each call
+ * (no caching/identity-memo — matches useStation's shallow-snapshot contract).
+ *
+ * @param {Array<{id:string, team?:string, score?:number}>} players
+ * @param {Array<{playerId:string, isBest:boolean}>} decisions
+ * @returns {Array<{team:string, players:number, score:number, responses:number, optimalRate:number}>}
+ *          One row per team that has >= 1 player, sorted by score desc then
+ *          optimalRate desc. optimalRate is 0..1 over that team's decisions
+ *          (0 when the team has no responses — no divide-by-zero).
+ */
+export function teamStandings(players, decisions) {
+  // Build team rows from players only, so teams with zero players never appear
+  // and a stray decision can't invent a team. Map playerId -> team for routing.
+  const rows = new Map(); // team -> { team, players, score, responses, best }
+  const playerTeam = new Map(); // playerId -> team
+  for (const p of players) {
+    if (!p.team) continue; // skip players with no chosen squad
+    playerTeam.set(p.id, p.team);
+    const row = rows.get(p.team) || {
+      team: p.team,
+      players: 0,
+      score: 0,
+      responses: 0,
+      best: 0,
+    };
+    row.players += 1;
+    row.score += p.score || 0;
+    rows.set(p.team, row);
+  }
+
+  for (const d of decisions) {
+    const team = playerTeam.get(d.playerId);
+    if (team === undefined) continue; // decision by a non-roster player
+    const row = rows.get(team);
+    row.responses += 1;
+    if (d.isBest === true) row.best += 1;
+  }
+
+  const result = Array.from(rows.values()).map((r) => ({
+    team: r.team,
+    players: r.players,
+    score: r.score,
+    responses: r.responses,
+    optimalRate: r.responses === 0 ? 0 : r.best / r.responses,
+  }));
+
+  result.sort((a, b) => b.score - a.score || b.optimalRate - a.optimalRate);
+  return result;
+}
+
 export function buildScoreboard(players) {
   const hasTeams = players.length > 0 && players.every((p) => p.team);
   let rows;

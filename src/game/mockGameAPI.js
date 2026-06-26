@@ -67,9 +67,11 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
     getStation() {
       return station;
     },
-    joinRoom({ name }) {
+    joinRoom({ name, team }) {
       const id = makeId('p');
-      const player = { id, name, team: teamFor(id), score: 0 };
+      // Honor the player's explicitly chosen squad. teamFor(id) remains only as
+      // a deterministic fallback for callers that don't supply a team.
+      const player = { id, name, team: team || teamFor(id), score: 0 };
       station.players.push(player);
       if (station.status === 'lobby') station.status = 'active';
       notify();

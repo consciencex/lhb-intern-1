@@ -71,6 +71,15 @@ describe('createMockGameAPI — joinRoom, emit, respondedCount', () => {
     expect(s.players.every((p) => /^Team (Alpha|Beta|Gamma|Delta)$/.test(p.team))).toBe(true);
   });
 
+  it('stores the explicitly chosen team verbatim when one is supplied', async () => {
+    const api = createMockGameAPI({});
+    // 'Team Delta' deliberately differs from the id-hash fallback for the first
+    // player so this only passes if the chosen team is honored, not the hash.
+    await api.joinRoom({ name: 'Dana', team: 'Team Delta' });
+    const s = api.getStation();
+    expect(s.players[0].team).toBe('Team Delta');
+  });
+
   it('emit(decision) appends a decision and respondedCount reflects distinct players for currentIdx', async () => {
     const api = createMockGameAPI({});
     const { playerId: p1 } = await api.joinRoom({ name: 'One' });

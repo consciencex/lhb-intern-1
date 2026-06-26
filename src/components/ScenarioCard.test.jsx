@@ -41,4 +41,13 @@ describe('ScenarioCard', () => {
     expect(screen.getByText('Regulated')).toBeInTheDocument();
     expect(screen.getByText('Medium Volume')).toBeInTheDocument();
   });
+
+  it('renders the scenario illustration keyed by the scenario id', () => {
+    const { container } = render(
+      <ScenarioCard scenario={scenario} qNum={1} qTotal={6} playerName="Team Lead" />
+    );
+    const art = container.querySelector('[data-testid="scenario-art"]');
+    expect(art).toBeInTheDocument();
+    expect(art).toHaveAttribute('data-art-id', 'loan');
+  });
 });
