@@ -48,6 +48,11 @@ import { createSupabaseGameAPI } from './supabaseGameAPI.js';
  * @property {(event: string, payload: object) => Promise<void>} emit
  *           emit('decision', { scenarioId, scenarioIdx, choice, isBest, breach })
  * @property {(points: number) => Promise<void>} award
+ *           Increments the player's players.score column. NOTE: this column no
+ *           longer drives any displayed score — the Screen derives team score
+ *           from the (replay-safe) decisions in teamStandings(), and a player's
+ *           own ReportCard uses local per-playthrough score state. Kept so the
+ *           column stays populated; award() is not idempotent across replays.
  * @property {() => Promise<void>} advance      // host: currentIdx++ or status->'ended'
  * @property {(on: boolean) => Promise<void>} setReveal  // host: toggle aggregate reveal
  * @property {(cb: (station: Station) => void) => (() => void)} subscribe

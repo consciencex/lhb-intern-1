@@ -141,7 +141,13 @@ export function isRoomSplit(agg) {
  * Pure: derives everything from the raw players + decisions arrays each call
  * (no caching/identity-memo — matches useStation's shallow-snapshot contract).
  *
- * @param {Array<{id:string, team?:string, score?:number}>} players
+ * Score is derived from the DECISIONS (POINTS_PER_BEST per is_best answer), NOT
+ * from the players.score DB column. emit('decision') is idempotent (deduped on
+ * (player_id, scenario_idx)) but award() is not, so the score column inflates on
+ * replay/re-answer and diverges from the decisions. Deriving score here keeps
+ * score, responses, and optimalRate mutually consistent and replay-safe.
+ *
+ * @param {Array<{id:string, team?:string}>} players (score column intentionally unused)
  * @param {Array<{playerId:string, isBest:boolean}>} decisions
  * @returns {Array<{team:string, players:number, score:number, responses:number, optimalRate:number}>}
  *          One row per team that has >= 1 player, sorted by score desc then
@@ -151,7 +157,7 @@ export function isRoomSplit(agg) {
 export function teamStandings(players, decisions) {
   // Build team rows from players only, so teams with zero players never appear
   // and a stray decision can't invent a team. Map playerId -> team for routing.
-  const rows = new Map(); // team -> { team, players, score, responses, best }
+  const rows = new Map(); // team -> { team, players, responses, best }
   const playerTeam = new Map(); // playerId -> team
   for (const p of players) {
     if (!p.team) continue; // skip players with no chosen squad
@@ -159,12 +165,10 @@ export function teamStandings(players, decisions) {
     const row = rows.get(p.team) || {
       team: p.team,
       players: 0,
-      score: 0,
       responses: 0,
       best: 0,
     };
     row.players += 1;
-    row.score += p.score || 0;
     rows.set(p.team, row);
   }
 
@@ -179,7 +183,8 @@ export function teamStandings(players, decisions) {
   const result = Array.from(rows.values()).map((r) => ({
     team: r.team,
     players: r.players,
-    score: r.score,
+    // Derived from decisions (replay-safe), not the inflatable players.score.
+    score: r.best * POINTS_PER_BEST,
     responses: r.responses,
     optimalRate: r.responses === 0 ? 0 : r.best / r.responses,
   }));

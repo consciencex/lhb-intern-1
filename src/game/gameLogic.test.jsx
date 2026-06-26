@@ -431,8 +431,10 @@ describe('teamStandings', () => {
     expect(teamStandings([], decisions)).toEqual([]);
   });
 
-  it('aggregates one row per team: player count, summed score, response count, optimalRate', () => {
+  it('aggregates one row per team: player count, derived score, response count, optimalRate', () => {
     const players = [
+      // Player .score columns are intentionally NOT multiples of the derived
+      // score below; teamStandings must derive score from decisions, not these.
       { id: 'a', name: 'Ann', team: 'Team Alpha', score: 20 },
       { id: 'b', name: 'Ben', team: 'Team Alpha', score: 10 },
       { id: 'c', name: 'Cara', team: 'Team Beta', score: 30 },
@@ -448,29 +450,58 @@ describe('teamStandings', () => {
     const alpha = rows.find((r) => r.team === 'Team Alpha');
     const beta = rows.find((r) => r.team === 'Team Beta');
 
+    // Alpha: 2 is_best decisions -> score 2 * POINTS_PER_BEST = 20.
     expect(alpha).toEqual({
       team: 'Team Alpha',
       players: 2,
-      score: 30,
+      score: 2 * POINTS_PER_BEST,
       responses: 3,
       optimalRate: 2 / 3,
     });
+    // Beta: 2 is_best decisions -> score 2 * POINTS_PER_BEST = 20.
     expect(beta).toEqual({
       team: 'Team Beta',
       players: 1,
-      score: 30,
+      score: 2 * POINTS_PER_BEST,
       responses: 2,
       optimalRate: 1,
     });
   });
 
-  it('sorts by score desc', () => {
+  it('derives team score from decisions, NOT the (replay-inflated) players.score column', () => {
+    // Regression for the scoring-consistency bug: award() double-counts on
+    // replay so players.score inflates (e.g. 30) while emit('decision') stays
+    // deduped (only 1 is_best row). Team score must reflect the decisions (10),
+    // not the inflated column, and stay consistent with optimalRate.
+    const players = [{ id: 'a', team: 'Team Alpha', score: 30 }];
+    const decisions = [{ playerId: 'a', scenarioIdx: 0, isBest: true }];
+    const rows = teamStandings(players, decisions);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].score).toBe(1 * POINTS_PER_BEST); // 10, not the inflated 30
+    expect(rows[0].responses).toBe(1);
+    expect(rows[0].optimalRate).toBe(1);
+    // score == (optimal answers) * POINTS_PER_BEST, consistent with optimalRate.
+    expect(rows[0].score).toBe(rows[0].responses * rows[0].optimalRate * POINTS_PER_BEST);
+  });
+
+  it('sorts by derived score desc (score = is_best count * POINTS_PER_BEST)', () => {
     const players = [
-      { id: 'a', team: 'Team Alpha', score: 10 },
-      { id: 'b', team: 'Team Beta', score: 50 },
-      { id: 'c', team: 'Team Gamma', score: 30 },
+      { id: 'a', team: 'Team Alpha' },
+      { id: 'b', team: 'Team Beta' },
+      { id: 'c', team: 'Team Gamma' },
     ];
-    const rows = teamStandings(players, []);
+    const decisions = [
+      // Alpha: 1 best -> score 10
+      { playerId: 'a', isBest: true },
+      // Beta: 3 best -> score 30 (highest)
+      { playerId: 'b', isBest: true },
+      { playerId: 'b', isBest: true },
+      { playerId: 'b', isBest: true },
+      // Gamma: 2 best -> score 20
+      { playerId: 'c', isBest: true },
+      { playerId: 'c', isBest: true },
+    ];
+    const rows = teamStandings(players, decisions);
     expect(rows.map((r) => r.team)).toEqual([
       'Team Beta',
       'Team Gamma',
@@ -480,18 +511,18 @@ describe('teamStandings', () => {
 
   it('breaks score ties by optimalRate desc', () => {
     const players = [
-      { id: 'a', team: 'Team Alpha', score: 20 },
-      { id: 'b', team: 'Team Beta', score: 20 },
+      { id: 'a', team: 'Team Alpha' },
+      { id: 'b', team: 'Team Beta' },
     ];
     const decisions = [
-      // Alpha: 1 of 2 best -> 0.5
+      // Alpha: 1 of 2 best -> score 10, optimalRate 0.5
       { playerId: 'a', isBest: true },
       { playerId: 'a', isBest: false },
-      // Beta: 2 of 2 best -> 1.0
-      { playerId: 'b', isBest: true },
+      // Beta: 1 of 1 best -> score 10, optimalRate 1.0 (same score, higher rate)
       { playerId: 'b', isBest: true },
     ];
     const rows = teamStandings(players, decisions);
+    expect(rows.map((r) => r.score)).toEqual([10, 10]); // tied score
     expect(rows.map((r) => r.team)).toEqual(['Team Beta', 'Team Alpha']);
   });
 
