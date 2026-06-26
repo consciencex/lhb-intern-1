@@ -62,6 +62,7 @@ const INTERFACE_METHODS = [
   'subscribe',
   'getStation',
   'destroy',
+  'isSolo',
 ];
 
 beforeEach(() => {
@@ -79,6 +80,12 @@ describe('createSupabaseGameAPI — structural contract', () => {
     for (const m of INTERFACE_METHODS) {
       expect(typeof api[m]).toBe('function');
     }
+  });
+
+  it('isSolo() is false (real multiplayer is host-paced)', () => {
+    const supabase = makeSupabaseStub();
+    const api = createSupabaseGameAPI({ view: 'play', roomCode: 'DEMO', supabase });
+    expect(api.isSolo()).toBe(false);
   });
 
   it('getView and getRoomCode reflect the constructor args', () => {
@@ -225,6 +232,80 @@ const DECISION_PAYLOAD = {
   isBest: true,
   breach: false,
 };
+
+// A stub that captures rooms.update() payloads and players.upsert() rows so we
+// can assert advance() resets reveal and joinRoom() assigns a team.
+function makeCaptureStub(captured) {
+  const channel = {
+    on() { return channel; },
+    subscribe(cb) { if (cb) cb('SUBSCRIBED'); return channel; },
+    unsubscribe() { return Promise.resolve('ok'); },
+  };
+  const room = { id: 'room-1', code: 'DEMO', current_idx: 0, reveal: false, status: 'lobby' };
+  return {
+    from: vi.fn((table) => {
+      if (table === 'rooms') {
+        return {
+          select() { return this; },
+          eq() { return this; },
+          maybeSingle() { return Promise.resolve({ data: room, error: null }); },
+          update(patch) {
+            captured.roomUpdates.push(patch);
+            return { eq() { return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      if (table === 'players') {
+        return {
+          upsert(row) {
+            captured.playerUpserts.push(row);
+            return {
+              select() { return this; },
+              single() { return Promise.resolve({ data: { id: 'player-1' }, error: null }); },
+            };
+          },
+          select() { return this; },
+          eq() { return this; },
+          order() { return Promise.resolve({ data: [], error: null }); },
+        };
+      }
+      return {
+        insert: vi.fn(() => Promise.resolve({ error: null })),
+        select() { return this; },
+        eq() { return Promise.resolve({ data: [], error: null }); },
+      };
+    }),
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    channel: vi.fn(() => channel),
+    removeChannel: vi.fn(() => Promise.resolve('ok')),
+  };
+}
+
+describe('createSupabaseGameAPI — advance resets reveal & joinRoom assigns team', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('advance() sets reveal:false in the same rooms update', async () => {
+    const captured = { roomUpdates: [], playerUpserts: [] };
+    const supabase = makeCaptureStub(captured);
+    const api = createSupabaseGameAPI({ view: 'host', roomCode: 'DEMO', supabase });
+    await api.advance();
+    expect(captured.roomUpdates.length).toBeGreaterThan(0);
+    const last = captured.roomUpdates[captured.roomUpdates.length - 1];
+    expect(last.reveal).toBe(false);
+    expect(last.current_idx).toBe(1);
+  });
+
+  it('joinRoom() includes a deterministic Team in the upserted row', async () => {
+    const captured = { roomUpdates: [], playerUpserts: [] };
+    const supabase = makeCaptureStub(captured);
+    const api = createSupabaseGameAPI({ view: 'play', roomCode: 'DEMO', supabase });
+    await api.joinRoom({ name: 'Dana' });
+    expect(captured.playerUpserts.length).toBeGreaterThan(0);
+    const row = captured.playerUpserts[captured.playerUpserts.length - 1];
+    expect(row.team).toMatch(/^Team (Alpha|Beta|Gamma|Delta)$/);
+    expect(row.name).toBe('Dana');
+  });
+});
 
 describe('createSupabaseGameAPI — emit error handling', () => {
   beforeEach(() => {

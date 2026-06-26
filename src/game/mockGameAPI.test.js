@@ -29,6 +29,23 @@ describe('createMockGameAPI — construction & initial station', () => {
   });
 });
 
+describe('createMockGameAPI — isSolo capability', () => {
+  it('defaults isSolo to true (single-device solo play)', () => {
+    const api = createMockGameAPI({});
+    expect(api.isSolo()).toBe(true);
+  });
+
+  it('honors solo:false for a hosted (multiplayer) simulation', () => {
+    const api = createMockGameAPI({ solo: false });
+    expect(api.isSolo()).toBe(false);
+  });
+
+  it('honors explicit solo:true', () => {
+    const api = createMockGameAPI({ solo: true });
+    expect(api.isSolo()).toBe(true);
+  });
+});
+
 describe('createMockGameAPI — joinRoom, emit, respondedCount', () => {
   it('joinRoom returns a playerId and adds a player', async () => {
     const api = createMockGameAPI({});
@@ -38,9 +55,20 @@ describe('createMockGameAPI — joinRoom, emit, respondedCount', () => {
     expect(s.players).toHaveLength(1);
     expect(s.players[0].id).toBe(playerId);
     expect(s.players[0].name).toBe('Aisha');
-    expect(s.players[0].team).toBe(null);
+    // Fix 3: joinRoom assigns a deterministic squad team so buildScoreboard's
+    // team branch fires in solo/non-seeded play too.
+    expect(s.players[0].team).toMatch(/^Team (Alpha|Beta|Gamma|Delta)$/);
     expect(s.players[0].score).toBe(0);
     expect(s.status).toBe('active');
+  });
+
+  it('assigns a deterministic team from the generated id (every joiner has a team)', async () => {
+    const api = createMockGameAPI({});
+    await api.joinRoom({ name: 'One' });
+    await api.joinRoom({ name: 'Two' });
+    await api.joinRoom({ name: 'Three' });
+    const s = api.getStation();
+    expect(s.players.every((p) => /^Team (Alpha|Beta|Gamma|Delta)$/.test(p.team))).toBe(true);
   });
 
   it('emit(decision) appends a decision and respondedCount reflects distinct players for currentIdx', async () => {
@@ -105,6 +133,14 @@ describe('createMockGameAPI — award, advance-to-end, setReveal', () => {
     await api.advance(); // one more from the last index
     expect(api.getStation().status).toBe('ended');
     expect(api.getStation().currentIdx).toBe(SCENARIOS.length - 1);
+  });
+
+  it('advance resets reveal to false (each new scenario starts hidden)', async () => {
+    const api = createMockGameAPI({});
+    await api.setReveal(true);
+    expect(api.getStation().reveal).toBe(true);
+    await api.advance();
+    expect(api.getStation().reveal).toBe(false);
   });
 
   it('setReveal toggles the reveal flag', async () => {

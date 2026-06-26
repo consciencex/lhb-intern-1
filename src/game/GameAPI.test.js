@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildGameAPI } from './GameAPI.js';
 
-const METHODS = ['getView', 'getRoomCode', 'joinRoom', 'emit', 'award', 'advance', 'setReveal', 'subscribe', 'getStation'];
+const METHODS = ['getView', 'getRoomCode', 'joinRoom', 'emit', 'award', 'advance', 'setReveal', 'subscribe', 'getStation', 'isSolo'];
 
 describe('buildGameAPI', () => {
   it('returns the mock impl exposing the full interface when no supabase client is provided', () => {

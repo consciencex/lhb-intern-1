@@ -7,10 +7,16 @@ import { SCENARIOS } from '../content/scenarios.js';
  * return resolved Promises and synchronously mutate the in-memory Station
  * before notifying subscribers.
  *
- * @param {{ view?: 'play'|'screen'|'host', roomCode?: string, seed?: boolean }} opts
+ * @param {{ view?: 'play'|'screen'|'host', roomCode?: string, seed?: boolean, solo?: boolean }} opts
+ *        solo defaults true (single-device solo play). Pass solo:false to
+ *        simulate a hosted/multiplayer room where the host paces scenarios.
  * @returns {import('./GameAPI.js').GameAPI}
  */
-export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = false } = {}) {
+export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = false, solo = true } = {}) {
+  // Deterministic squad teams. joinRoom assigns one from a stable hash of the
+  // generated player id so buildScoreboard's team branch fires in solo play too
+  // (it requires every player to have a truthy team).
+  const TEAMS = ['Alpha', 'Beta', 'Gamma', 'Delta'];
   const station = {
     roomCode,
     currentIdx: 0,
@@ -24,6 +30,16 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
   const subscribers = new Set();
   let nextId = 0;
   const makeId = (prefix) => `${prefix}_${++nextId}`;
+
+  // Stable 32-bit string hash so a given id always maps to the same team.
+  // Mirrors the supabaseGameAPI joinRoom hash so the two backends agree.
+  function teamFor(id) {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    }
+    return 'Team ' + TEAMS[hash % TEAMS.length];
+  }
 
   function recomputeResponded() {
     const ids = new Set();
@@ -42,6 +58,9 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
     getView() {
       return view;
     },
+    isSolo() {
+      return solo;
+    },
     getRoomCode() {
       return roomCode;
     },
@@ -49,7 +68,8 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
       return station;
     },
     joinRoom({ name }) {
-      const player = { id: makeId('p'), name, team: null, score: 0 };
+      const id = makeId('p');
+      const player = { id, name, team: teamFor(id), score: 0 };
       station.players.push(player);
       if (station.status === 'lobby') station.status = 'active';
       notify();
@@ -75,6 +95,9 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
       } else {
         station.currentIdx += 1;
       }
+      // Each new scenario starts hidden: answers come in hidden → host reveals
+      // → discuss → advance resets to hidden for the next scenario.
+      station.reveal = false;
       notify();
       return Promise.resolve();
     },

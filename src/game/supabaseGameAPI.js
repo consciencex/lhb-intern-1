@@ -22,6 +22,11 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
   // with the deck (matches mockGameAPI, which also uses SCENARIOS.length).
   const SCENARIO_COUNT = SCENARIOS.length; // currentIdx 0..SCENARIO_COUNT-1
 
+  // Deterministic squad teams assigned from the stable client_id so the team
+  // scoreboard (buildScoreboard) groups by squad in production. Every joiner
+  // gets a truthy team; the same device always lands in the same squad.
+  const TEAMS = ['Alpha', 'Beta', 'Gamma', 'Delta'];
+
   // Stable per-device client id (used for the unique(room_id, client_id) join).
   let clientId = safeGet(CLIENT_ID_KEY);
   if (!clientId) {
@@ -158,8 +163,24 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     return view;
   }
 
+  function isSolo() {
+    // Real multiplayer is host-paced: players follow station.currentIdx and
+    // must not advance the whole room.
+    return false;
+  }
+
   function getRoomCode() {
     return roomCode;
+  }
+
+  // Stable 32-bit string hash → squad. Mirrors mockGameAPI.teamFor so both
+  // backends assign the same squad for the same id.
+  function teamFor(id) {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    }
+    return 'Team ' + TEAMS[hash % TEAMS.length];
   }
 
   async function joinRoom({ name }) {
@@ -171,7 +192,7 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     const { data, error } = await supabase
       .from('players')
       .upsert(
-        { room_id: roomId, name, client_id: clientId },
+        { room_id: roomId, name, client_id: clientId, team: teamFor(clientId) },
         { onConflict: 'room_id,client_id' },
       )
       .select('id')
@@ -241,10 +262,12 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
       if (!roomId) return;
       const last = station.currentIdx;
       // Past the last index, end the room; otherwise step to next scenario.
+      // Reset reveal to false in the SAME update so each new scenario starts
+      // hidden (answers come in hidden → host reveals → discuss → advance).
       const patch =
         last >= SCENARIO_COUNT - 1
-          ? { status: 'ended' }
-          : { current_idx: last + 1, status: 'active' };
+          ? { status: 'ended', reveal: false }
+          : { current_idx: last + 1, status: 'active', reveal: false };
       const { error } = await supabase
         .from('rooms')
         .update(patch)
@@ -298,6 +321,7 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
 
   return {
     getView,
+    isSolo,
     getRoomCode,
     joinRoom,
     emit,

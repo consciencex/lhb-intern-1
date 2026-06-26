@@ -37,6 +37,10 @@ import { createSupabaseGameAPI } from './supabaseGameAPI.js';
  *
  * @typedef {Object} GameAPI
  * @property {() => 'play'|'screen'|'host'} getView
+ * @property {() => boolean} isSolo
+ *           True for single-device solo play (player self-paces with a "Next"
+ *           button). False for a hosted/multiplayer room where the host paces
+ *           the room and players follow station.currentIdx.
  * @property {() => string|null} getRoomCode
  * @property {(args: { name: string }) => Promise<{ playerId: string }>} joinRoom
  * @property {(event: string, payload: object) => Promise<void>} emit
