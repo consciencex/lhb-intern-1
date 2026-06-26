@@ -1,11 +1,22 @@
 # Automate or Not? — Run Guide
 
 A live workshop game for ~30 bank interns. Each player is a **Team Lead** on a
-phone; a projector shows live room aggregates; a host advances scenarios.
-Players read a banking work scenario, pick one of three approaches
+phone; a projector shows room aggregates; a host advances scenarios. Players read
+a banking work scenario, pick one of three approaches
 (**Automate Fully / Human-in-Loop / Manual Review**), see an immediate
 consequence and three personal meters move (plus a red **BREACH** card on a bad
 high-risk choice), and get a personal report card at the end.
+
+The game is **host-paced**: in a hosted (multi-device) room the host advances
+scenarios and every player follows — players do **not** get a "Next" button;
+after answering they see "waiting for the host" and move on when the host
+advances. (Single-device mock mode is **solo**: the player self-paces with a Next
+button.) The projector **hides the room responses until the host reveals them**
+(answers come in privately → host reveals to discuss → advancing re-hides for the
+next scenario). Each joining device is auto-assigned a **squad** (Team Alpha /
+Beta / Gamma / Delta) so the projector scoreboard ranks squads. The **room code**
+is shown on the Host header and on the Screen ("Join: room DEMO") so the
+facilitator can read it out.
 
 Three URL-selected views share one app:
 
@@ -198,15 +209,23 @@ and the **same `room=DEMO`**.
    On the **Host** view, click **Advance to Next Scenario**. Every **Player**
    device should move to the next scenario, and the **Screen** view's current
    scenario title (under "NOW PLAYING" on the host) should change in step. No
-   device should be left on the old scenario.
+   device should be left on the old scenario. Players never advance the room
+   themselves: after answering, a Player device shows "✓ Answer locked — waiting
+   for the host…" (no Next button) until the host advances. The Screen scoreboard
+   ranks **squads** (Team Alpha / Beta / Gamma / Delta), the squad each device was
+   auto-assigned on join.
 
-3. **Screen aggregates update live as players answer.**
+3. **Screen aggregates update live once the host reveals.**
    With players on the same scenario, have each phone pick a *different*
    approach (one **Automate Fully**, one **Human-in-Loop**, one **Manual
-   Review** if you have three). The **Screen** `ROOM RESPONSE` segmented bars
-   and the respondent count must update **within ~1 second** — no refresh
-   needed. When the room is split between Automate and Human-in-Loop, the
-   `DISCUSSION POINT` card highlights on the screen.
+   Review** if you have three). While **Reveal** is OFF the **Screen** shows a
+   "🔒 Responses hidden — N / M answered" placeholder; the responded count still
+   ticks up live as players answer. On the **Host** view toggle **Reveal
+   Aggregate on Screen** ON: the **Screen** `ROOM RESPONSE` segmented bars appear
+   and update **within ~1 second** — no refresh needed. When the room is split
+   between Automate and Human-in-Loop, the `DISCUSSION POINT` card highlights on
+   the screen. Clicking **Advance** resets Reveal to OFF so the next scenario
+   starts hidden again.
 
 4. **Breach card appears on a bad high-risk pick.**
    Advance to a **high-risk** scenario (e.g. **Suspicious Transaction

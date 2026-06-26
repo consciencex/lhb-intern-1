@@ -96,11 +96,26 @@ surfaces.
 
 ### 7. Confirm host advance & reveal propagate
 
-On the **Host** view click **Advance**: `rooms.current_idx` increments and both
-Player tabs and the Screen move to scenario 2 within ~1s. Toggle
-**Reveal Aggregate**: `rooms.reveal` flips and the Screen reflects the new
-reveal state. Click **Advance** past the last scenario: `rooms.status` becomes
+The Screen **hides the room responses until the host reveals them** — answers
+come in privately, the host reveals to discuss, then advancing re-hides for the
+next scenario. Initially the Screen shows a "🔒 Responses hidden — N / M
+answered" placeholder. Toggle **Reveal Aggregate** on the **Host**: `rooms.reveal`
+flips to `true` and the Screen now shows the segmented bars (and the DISCUSSION
+POINT card when the room is split).
+
+On the **Host** view click **Advance**: `rooms.current_idx` increments, `reveal`
+is reset to `false` in the **same** update (so the next scenario starts hidden),
+and both Player tabs and the Screen move to scenario 2 within ~1s. Players in a
+hosted room do **not** get a self-advance button — after answering they show a
+"✓ Answer locked — waiting for the host…" state and follow the host's
+`current_idx`. Click **Advance** past the last scenario: `rooms.status` becomes
 `'ended'` and the Player tabs show the ReportCard.
+
+Each joining device is auto-assigned a squad (`players.team` = `Team Alpha` /
+`Beta` / `Gamma` / `Delta`, a deterministic hash of the per-device `client_id`),
+so the Screen scoreboard groups scores by squad. The room code is shown on both
+the **Host** header ("Room DEMO") and the **Screen** ("Join: room DEMO") so the
+facilitator can read it out and players know which room to join.
 
 If every box above behaves as described, realtime sync is verified
 end-to-end. (No automated assertion is possible for this step.)
