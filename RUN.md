@@ -16,7 +16,14 @@ button.) The projector **hides the room responses until the host reveals them**
 next scenario). Each joining device is auto-assigned a **squad** (Team Alpha /
 Beta / Gamma / Delta) so the projector scoreboard ranks squads. The **room code**
 is shown on the Host header and on the Screen ("Join: room DEMO") so the
-facilitator can read it out.
+facilitator can read it out, and a **"Scan to join" QR code** is shown on both
+the Screen and the Host view so interns can scan to open the player URL.
+
+The **Host view also shows a live results panel** ("ผลสด / LIVE RESULTS") that is
+**always visible** — the facilitator sees the incoming Automate / Human-in-Loop /
+Manual percentages, the responded count, and the squad scoreboard in real time
+**before** deciding to reveal them on the projector. (Reveal only controls what
+the *projector* shows; the host always sees the backend data.)
 
 Three URL-selected views share one app:
 
@@ -171,7 +178,12 @@ the Network address from section 3c:
 `room=DEMO` is what binds all the devices into one shared session; the three
 `view` values pick which of the three screens each device shows.
 
-Tip: generate a QR code for the phone URL so interns can join in seconds.
+**Scan to join (QR):** both the **Screen** (projector) and the **Host** view now
+render a **"Scan to join"** QR code on a white card. Interns just point their
+phone camera at it to open the player URL for this room (`?view=play&room=…`) —
+no typing. The URL is derived from the page's own origin, so the QR works on
+localhost, the LAN address, or the deployed domain automatically. The join URL is
+also printed under the QR for anyone who prefers to type it.
 
 > The dev-only top nav (Player / Screen / Host tabs) is still visible for quick
 > switching during setup. In the workshop, hand each device its dedicated URL.
@@ -220,7 +232,10 @@ and the **same `room=DEMO`**.
    approach (one **Automate Fully**, one **Human-in-Loop**, one **Manual
    Review** if you have three). While **Reveal** is OFF the **Screen** shows a
    "🔒 Responses hidden — N / M answered" placeholder; the responded count still
-   ticks up live as players answer. On the **Host** view toggle **Reveal
+   ticks up live as players answer. On the **Host** view, the **LIVE RESULTS**
+   panel shows the actual Automate / Human-in-Loop / Manual bars and the squad
+   scoreboard updating live the whole time — even with **Reveal OFF** — so the
+   facilitator can gauge the room before revealing. On the **Host** view toggle **Reveal
    Aggregate on Screen** ON: the **Screen** `ROOM RESPONSE` segmented bars appear
    and update **within ~1 second** — no refresh needed. When the room is split
    between Automate and Human-in-Loop, the `DISCUSSION POINT` card highlights on

@@ -2,7 +2,9 @@
 import React from 'react';
 import { COLORS, FONT } from '../theme.js';
 import { SCENARIOS } from '../content/scenarios.js';
+import { aggregate, buildScoreboard, isRoomSplit } from '../game/gameLogic.js';
 import { useStation } from '../hooks/useStation.js';
+import JoinQR from '../components/JoinQR.jsx';
 
 export default function HostView({ gameAPI }) {
   const station = useStation(gameAPI);
@@ -20,6 +22,17 @@ export default function HostView({ gameAPI }) {
   const playerCount = station.players.length;
   const reveal = station.reveal;
   const roomCode = station.roomCode || gameAPI.getRoomCode();
+
+  // Live results: recompute every render over the raw decisions array. useStation
+  // shallow-snapshots, so the inner decisions array keeps its identity when the
+  // backend mutates in place — do NOT useMemo on it. The host monitors these
+  // live, BEFORE (and independent of) revealing them on the projector.
+  const currentDecisions = station.decisions.filter(
+    (d) => d.scenarioIdx === station.currentIdx
+  );
+  const agg = aggregate(currentDecisions);
+  const split = isRoomSplit(agg);
+  const teams = buildScoreboard(station.players);
 
   const onAdvance = () => {
     gameAPI.advance();
@@ -300,6 +313,173 @@ export default function HostView({ gameAPI }) {
               2:30 left
             </span>
           </button>
+        </div>
+
+        {/* LIVE RESULTS — always visible (NOT gated by reveal). The facilitator
+            monitors incoming answers here before deciding to reveal on the
+            projector. Light-themed to match the host panel. */}
+        <div
+          style={{
+            background: COLORS.white,
+            borderRadius: 14,
+            padding: 20,
+            marginTop: 14,
+            border: `1px solid ${COLORS.border}`,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: COLORS.slate400,
+                letterSpacing: '0.09em',
+              }}
+            >
+              ผลสด / LIVE RESULTS
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.slate500,
+              }}
+            >
+              {respondedCount} / {playerCount} answered
+            </div>
+          </div>
+
+          {agg.bars.map((bar) => (
+            <div key={bar.key} data-testid="host-result-row" style={{ marginBottom: 14 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: COLORS.slate700,
+                  }}
+                >
+                  {bar.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: COLORS.ink,
+                  }}
+                >
+                  {bar.pctStr}
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 10,
+                  background: COLORS.track,
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  data-testid="host-result-fill"
+                  style={{
+                    height: '100%',
+                    width: bar.pctStr,
+                    background: bar.color,
+                    borderRadius: 6,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+
+          {split && (
+            <div
+              style={{
+                background: 'rgba(217,119,6,0.08)',
+                border: `1px solid rgba(217,119,6,0.25)`,
+                borderRadius: 10,
+                padding: '8px 12px',
+                marginTop: 4,
+                marginBottom: 4,
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.amber,
+              }}
+            >
+              ROOM SPLIT — good discussion point
+            </div>
+          )}
+
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: COLORS.slate400,
+              letterSpacing: '0.09em',
+              marginTop: 18,
+              marginBottom: 10,
+            }}
+          >
+            SCOREBOARD
+          </div>
+          {teams.map((team) => (
+            <div
+              key={team.name}
+              data-testid="host-score-row"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '7px 10px',
+                borderRadius: 8,
+                background: COLORS.track,
+                marginBottom: 6,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: COLORS.slate700,
+                }}
+              >
+                {team.name}
+              </span>
+              <span
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: COLORS.navy,
+                }}
+              >
+                {team.score}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Join QR — host can hold up / display so players scan to join. */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: 14,
+          }}
+        >
+          <JoinQR roomCode={roomCode} size={140} />
         </div>
       </div>
     </div>

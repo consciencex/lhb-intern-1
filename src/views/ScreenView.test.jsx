@@ -86,7 +86,17 @@ describe('ScreenView', () => {
   it('shows the room code prominently so players know which room to join', () => {
     const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
     render(<ScreenView gameAPI={gameAPI} />);
-    expect(screen.getByText(/Join/i)).toBeInTheDocument();
-    expect(screen.getByText(/DEMO/)).toBeInTheDocument();
+    // The header line reads "Join: room DEMO" (distinct from the QR's "Scan to join").
+    expect(screen.getByText(/Join: room DEMO/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/DEMO/).length).toBeGreaterThan(0);
+  });
+
+  it('shows a join QR code so players can scan to join the room', () => {
+    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
+    const { container } = render(<ScreenView gameAPI={gameAPI} />);
+    expect(screen.getByText(/Scan to join/i)).toBeInTheDocument();
+    // The encoded join URL is also printed for typing; it targets the play view.
+    expect(screen.getByText(/view=play/)).toHaveTextContent('room=DEMO');
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 });

@@ -4,6 +4,7 @@ import { aggregate, isRoomSplit, buildScoreboard } from '../game/gameLogic.js';
 import { useStation } from '../hooks/useStation.js';
 import SegmentedBars from '../components/SegmentedBars.jsx';
 import Scoreboard from '../components/Scoreboard.jsx';
+import JoinQR from '../components/JoinQR.jsx';
 
 export default function ScreenView({ gameAPI }) {
   const station = useStation(gameAPI);
@@ -166,6 +167,9 @@ export default function ScreenView({ gameAPI }) {
       </div>
 
       <div style={{ width: 272, padding: '44px 24px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+          <JoinQR roomCode={roomCode} size={180} />
+        </div>
         <Scoreboard teams={teams} />
       </div>
     </div>
