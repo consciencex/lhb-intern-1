@@ -101,6 +101,34 @@ export function aggregate(decisions) {
   return { counts, total, bars };
 }
 
+/**
+ * Bucket decisions by scenarioIdx and aggregate each bucket.
+ * @param {Array<{scenarioIdx:number, choice:string}>} decisions
+ * @param {number} scenarioCount
+ * @returns {Array} length === scenarioCount, each an aggregate() result.
+ */
+export function aggregateByScenario(decisions, scenarioCount) {
+  const buckets = Array.from({ length: scenarioCount }, () => []);
+  for (const d of decisions) {
+    if (d.scenarioIdx >= 0 && d.scenarioIdx < scenarioCount) {
+      buckets[d.scenarioIdx].push(d);
+    }
+  }
+  return buckets.map((b) => aggregate(b));
+}
+
+/**
+ * Fraction (0..1) of decisions that chose the scenario's best approach.
+ * Returns 0 for an empty list (no divide-by-zero).
+ * @param {Array<{isBest:boolean}>} decisions
+ * @returns {number}
+ */
+export function optimalRate(decisions) {
+  if (decisions.length === 0) return 0;
+  const best = decisions.filter((d) => d.isBest === true).length;
+  return best / decisions.length;
+}
+
 export function isRoomSplit(agg) {
   if (agg.total === 0) return false;
   const pcts = agg.bars.map((b) => b.pct).sort((a, b) => b - a);

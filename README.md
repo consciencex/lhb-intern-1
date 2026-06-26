@@ -1,23 +1,24 @@
 # Automate or Not?
 
 A live, in-room workshop game for ~30 bank interns. Each player is a **Team
-Lead** on their **phone**; a **projector** shows live room aggregates and a
-scoreboard; a **host** (facilitator) advances through the scenarios. Players read
-a banking work scenario (loan approvals, AML monitoring, KYC, complaints, …),
-pick one of three approaches — **Automate Fully / Human-in-Loop / Manual
-Review** — and immediately see the consequence, three personal meters move, and a
-red **COMPLIANCE BREACH** card on a bad high-risk choice. At the end each player
-gets a personal **MISSION DEBRIEF** report card. The point is the discussion the
-spread of answers provokes, not the score.
+Lead** on their **phone** and plays **self-paced** — no host, no waiting. A
+**projector** shows a **live results dashboard**: every answer shows up instantly
+with per-scenario response breakdowns, an overall "chose the optimal approach"
+rate, and a team scoreboard. Players read a banking work scenario (loan
+approvals, AML monitoring, KYC, complaints, …), pick one of three approaches —
+**Automate Fully / Human-in-Loop / Manual Review** — and immediately see the
+consequence, three personal meters move, and a red **COMPLIANCE BREACH** card on
+a bad high-risk choice, then advance themselves to the next scenario. At the end
+each player gets a personal **MISSION DEBRIEF** report card. The point is the
+discussion the spread of answers provokes, not the score.
 
-Three URL-selected views share one app — `room` picks the shared session, `view`
+Two URL-selected views share one app — `room` picks the shared session, `view`
 picks the screen:
 
 | Role          | Device       | URL                       |
 | ------------- | ------------ | ------------------------- |
 | Player        | each phone   | `?view=play&room=DEMO`    |
 | Screen        | projector    | `?view=screen&room=DEMO`  |
-| Host          | facilitator  | `?view=host&room=DEMO`    |
 
 > Originated from a [Claude Design](https://claude.ai/design) handoff; the
 > original HTML/CSS/JS prototype and screenshots live in [`project/`](project/)
@@ -37,16 +38,16 @@ npm install
 npm run dev
 ```
 
-Open these three URLs (default `http://localhost:5173`), each in its own
+Open these two URLs (default `http://localhost:5173`), each in its own
 tab/window — they work immediately against the in-memory mock, no backend
 required:
 
 - Player: <http://localhost:5173/?view=play>
 - Screen: <http://localhost:5173/?view=screen>
-- Host:   <http://localhost:5173/?view=host>
 
 The tabs are not connected to each other in mock mode (it is per-tab and
-in-memory) — this is for trying the game out and rehearsing each screen. For a
+in-memory) — this is for trying the game out and rehearsing each screen. The
+Screen tab is pre-seeded with demo data so the live dashboard looks alive. For a
 real shared session across phones, set up Supabase.
 
 ## Real multiplayer (Supabase)
@@ -67,9 +68,9 @@ real shared session across phones, set up Supabase.
 Using the **Network** address Vite prints (e.g. `http://192.168.1.42:5173`) and
 the seeded `DEMO` room:
 
-- Host laptop: `http://192.168.1.42:5173/?view=host&room=DEMO`
-- Projector:   `http://192.168.1.42:5173/?view=screen&room=DEMO`
-- Each phone:  `http://192.168.1.42:5173/?view=play&room=DEMO`
+- Projector:  `http://192.168.1.42:5173/?view=screen&room=DEMO`
+- Each phone: `http://192.168.1.42:5173/?view=play&room=DEMO` (or scan the QR on
+  the projector)
 
 ## Testing
 

@@ -179,23 +179,28 @@ describe('createMockGameAPI — seed', () => {
     expect(s.status).toBe('active');
   });
 
-  it('seed:true produces decisions for the current scenario that are aggregate-able', () => {
+  it('seed:true spreads decisions across MULTIPLE scenario indices, each aggregate-able', () => {
     const api = createMockGameAPI({ seed: true });
     const s = api.getStation();
-    const forCurrent = s.decisions.filter((d) => d.scenarioIdx === s.currentIdx);
-    expect(forCurrent.length).toBe(s.players.length);
-    const choices = new Set(forCurrent.map((d) => d.choice));
-    expect(choices).toEqual(new Set(['automate', 'hitl', 'manual']));
-    expect(s.respondedCount).toBe(s.players.length);
+    // Decisions span several scenarios (not just idx 0) so the all-scenarios
+    // dashboard shows live data across the board in demo/screen mode.
+    const idxsWithData = new Set(s.decisions.map((d) => d.scenarioIdx));
+    expect(idxsWithData.size).toBeGreaterThan(1);
+    // Every scenario has a spread of choices (all three approaches present).
+    for (let i = 0; i < SCENARIOS.length; i++) {
+      const forI = s.decisions.filter((d) => d.scenarioIdx === i);
+      expect(forI.length).toBeGreaterThan(0);
+      const choices = new Set(forI.map((d) => d.choice));
+      expect(choices).toEqual(new Set(['automate', 'hitl', 'manual']));
+    }
   });
 
-  it('seed:true scores players who picked the best choice for the current scenario', () => {
+  it('seed:true scores players 10 for each best choice they picked across scenarios', () => {
     const api = createMockGameAPI({ seed: true });
     const s = api.getStation();
-    const best = SCENARIOS[s.currentIdx].best;
-    s.players.forEach((p, i) => {
-      const dec = s.decisions.find((d) => d.playerId === p.id && d.scenarioIdx === s.currentIdx);
-      expect(p.score).toBe(dec.choice === best ? 10 : 0);
+    s.players.forEach((p) => {
+      const myBest = s.decisions.filter((d) => d.playerId === p.id && d.isBest).length;
+      expect(p.score).toBe(myBest * 10);
     });
   });
 

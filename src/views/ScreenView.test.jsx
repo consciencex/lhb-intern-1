@@ -1,102 +1,129 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, act } from '@testing-library/react';
+import { render, screen, cleanup, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ScreenView from './ScreenView.jsx';
 import { createMockGameAPI } from '../game/mockGameAPI.js';
 import { SCENARIOS } from '../content/scenarios.js';
+import { CHOICE_LABELS } from '../content/scenarios.js';
+import { optimalRate } from '../game/gameLogic.js';
 
 afterEach(cleanup);
 
-// Seeded + revealed: the projector shows live bars only once the host reveals.
-function revealedScreen() {
-  const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
-  gameAPI.setReveal(true);
-  return gameAPI;
+function seededScreen() {
+  return createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
 }
 
-describe('ScreenView', () => {
-  it('shows the current scenario title from the seeded station (regardless of reveal)', () => {
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
+describe('ScreenView — live all-scenarios dashboard (no reveal gating)', () => {
+  it('renders a live results card for EVERY scenario, each titled', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    const cards = screen.getAllByTestId('scenario-result');
+    expect(cards).toHaveLength(SCENARIOS.length);
+    SCENARIOS.forEach((s) => {
+      expect(screen.getByText(s.title)).toBeInTheDocument();
+    });
+  });
+
+  it('shows response breakdown bars with non-zero data for MULTIPLE scenarios immediately (no reveal needed)', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    const cards = screen.getAllByTestId('scenario-result');
+
+    let scenariosWithNonZeroBar = 0;
+    cards.forEach((card) => {
+      const fills = within(card).getAllByTestId('scenario-bar-fill');
+      // each scenario has exactly the 3 approach bars
+      expect(fills).toHaveLength(3);
+      const widths = fills.map((f) => f.style.width);
+      if (widths.some((w) => w !== '0%' && w !== '' && w !== '0')) {
+        scenariosWithNonZeroBar += 1;
+      }
+    });
+    expect(scenariosWithNonZeroBar).toBeGreaterThan(1);
+  });
+
+  it('marks the BEST/optimal answer on each scenario card', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    const cards = screen.getAllByTestId('scenario-result');
+    cards.forEach((card, i) => {
+      const best = SCENARIOS[i].best;
+      const marker = within(card).getByTestId('best-marker');
+      // The marker names the optimal approach's label.
+      expect(marker).toHaveTextContent(CHOICE_LABELS[best]);
+    });
+  });
+
+  it('shows a per-scenario response count', () => {
+    const gameAPI = seededScreen();
     const station = gameAPI.getStation();
-    const expectedTitle = SCENARIOS[station.currentIdx].title;
     render(<ScreenView gameAPI={gameAPI} />);
-    expect(screen.getByText(expectedTitle)).toBeInTheDocument();
+    const cards = screen.getAllByTestId('scenario-result');
+    cards.forEach((card, i) => {
+      const count = station.decisions.filter((d) => d.scenarioIdx === i).length;
+      const countEl = within(card).getByTestId('scenario-count');
+      expect(countEl).toHaveTextContent(String(count));
+    });
   });
 
-  it('renders three response bars with at least one non-zero percentage when revealed', () => {
-    const gameAPI = revealedScreen();
+  it('shows live totals: players joined and total responses', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
     render(<ScreenView gameAPI={gameAPI} />);
-
-    const rows = screen.getAllByTestId('seg-row');
-    expect(rows).toHaveLength(3);
-
-    const fills = screen.getAllByTestId('seg-fill');
-    const widths = fills.map((f) => f.style.width);
-    // seeded spread must produce at least one bar wider than 0%
-    const hasNonZero = widths.some((w) => w !== '0%' && w !== '' && w !== '0');
-    expect(hasNonZero).toBe(true);
+    expect(screen.getByTestId('total-players')).toHaveTextContent(
+      String(station.players.length),
+    );
+    expect(screen.getByTestId('total-responses')).toHaveTextContent(
+      String(station.decisions.length),
+    );
   });
 
-  it('renders the scoreboard with at least one team row (regardless of reveal)', () => {
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
+  it('shows the overall optimal-choice rate summary', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
     render(<ScreenView gameAPI={gameAPI} />);
+    const pct = Math.round(optimalRate(station.decisions) * 100);
+    expect(screen.getByTestId('optimal-rate')).toHaveTextContent(`${pct}%`);
+  });
+
+  it('renders the scoreboard with at least one team row', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
     expect(screen.getByText('SCOREBOARD')).toBeInTheDocument();
     expect(screen.getAllByTestId('score-row').length).toBeGreaterThan(0);
   });
 
-  it('shows the CURRENT SCENARIO header with the question number (regardless of reveal)', () => {
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
-    const station = gameAPI.getStation();
-    render(<ScreenView gameAPI={gameAPI} />);
-    const qNum = station.currentIdx + 1;
-    expect(
-      screen.getByText(`CURRENT SCENARIO · Q${qNum} / ${SCENARIOS.length}`)
-    ).toBeInTheDocument();
-  });
-
-  it('hides the response bars until the host reveals, showing a locked placeholder', () => {
-    // seed:true leaves reveal:false (responses come in hidden).
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
-    const station = gameAPI.getStation();
-    render(<ScreenView gameAPI={gameAPI} />);
-
-    // No bars while hidden.
-    expect(screen.queryAllByTestId('seg-row')).toHaveLength(0);
-    // Locked placeholder shows responded / total + a waiting message.
-    expect(screen.getByText(/Responses hidden/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(new RegExp(`${station.respondedCount}\\s*/\\s*${station.players.length}`))
-    ).toBeInTheDocument();
-  });
-
-  it('reveals the bars when the host toggles reveal on', async () => {
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
-    render(<ScreenView gameAPI={gameAPI} />);
-    // Hidden first.
-    expect(screen.queryAllByTestId('seg-row')).toHaveLength(0);
-
-    await act(async () => {
-      await gameAPI.setReveal(true);
-    });
-
-    expect(screen.getAllByTestId('seg-row')).toHaveLength(3);
-    expect(screen.queryByText(/Responses hidden/i)).not.toBeInTheDocument();
-  });
-
   it('shows the room code prominently so players know which room to join', () => {
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
-    render(<ScreenView gameAPI={gameAPI} />);
-    // The header line reads "Join: room DEMO" (distinct from the QR's "Scan to join").
-    expect(screen.getByText(/Join: room DEMO/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/DEMO/).length).toBeGreaterThan(0);
+    render(<ScreenView gameAPI={seededScreen()} />);
+    expect(screen.getByText(/room DEMO/i)).toBeInTheDocument();
   });
 
   it('shows a join QR code so players can scan to join the room', () => {
-    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: true });
-    const { container } = render(<ScreenView gameAPI={gameAPI} />);
+    const { container } = render(<ScreenView gameAPI={seededScreen()} />);
     expect(screen.getByText(/Scan to join/i)).toBeInTheDocument();
-    // The encoded join URL is also printed for typing; it targets the play view.
+    // The encoded join URL targets the play view.
     expect(screen.getByText(/view=play/)).toHaveTextContent('room=DEMO');
     expect(container.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('updates live as a new answer arrives (totals rise, no reveal step)', async () => {
+    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: false });
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    // Empty to start.
+    expect(screen.getByTestId('total-responses')).toHaveTextContent('0');
+
+    await act(async () => {
+      const { playerId } = await gameAPI.joinRoom({ name: 'Dana' });
+      await gameAPI.emit('decision', {
+        playerId,
+        scenarioId: SCENARIOS[0].id,
+        scenarioIdx: 0,
+        choice: SCENARIOS[0].best,
+        isBest: true,
+        breach: false,
+      });
+    });
+
+    // The dashboard reflects the new answer immediately — no reveal needed.
+    expect(screen.getByTestId('total-players')).toHaveTextContent('1');
+    expect(screen.getByTestId('total-responses')).toHaveTextContent('1');
+    expect(screen.getByTestId('optimal-rate')).toHaveTextContent('100%');
   });
 });

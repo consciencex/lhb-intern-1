@@ -135,7 +135,6 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
       'Quentin', 'Rosa', 'Sami', 'Tara', 'Umar', 'Vera', 'Wei', 'Xena',
       'Yusuf', 'Zoe', 'Amir', 'Bella', 'Cyrus', 'Dana',
     ];
-    const scenario = SCENARIOS[station.currentIdx];
     NAMES.forEach((name, i) => {
       const player = {
         id: makeId('p'),
@@ -144,16 +143,23 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
         score: 0,
       };
       station.players.push(player);
-      const choice = choiceCycle[i % choiceCycle.length];
-      const isBest = choice === scenario.best;
-      const breach = !!scenario.choices[choice].breach;
-      if (isBest) player.score += 10;
-      station.decisions.push({
-        playerId: player.id,
-        scenarioIdx: station.currentIdx,
-        choice,
-        isBest,
-        breach,
+      // Self-paced demo: each seeded player has answered EVERY scenario, so the
+      // all-scenarios live dashboard shows data across the board. Choice cycles
+      // by (player + scenario) so all three approaches appear in every scenario
+      // (deterministic, no Math.random).
+      SCENARIOS.forEach((scenario, sIdx) => {
+        const choice = choiceCycle[(i + sIdx) % choiceCycle.length];
+        const isBest = choice === scenario.best;
+        const breach = !!scenario.choices[choice].breach;
+        if (isBest) player.score += 10;
+        station.decisions.push({
+          playerId: player.id,
+          scenarioId: scenario.id,
+          scenarioIdx: sIdx,
+          choice,
+          isBest,
+          breach,
+        });
       });
     });
     station.status = 'active';

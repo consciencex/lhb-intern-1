@@ -5,9 +5,8 @@ import { getSupabase } from './game/supabaseClient.js';
 import TopNav from './components/TopNav.jsx';
 import PlayerView from './views/PlayerView.jsx';
 import ScreenView from './views/ScreenView.jsx';
-import HostView from './views/HostView.jsx';
 
-const VIEWS = ['play', 'screen', 'host'];
+const VIEWS = ['play', 'screen'];
 
 function readParams() {
   const params = new URLSearchParams(window.location.search);
@@ -55,14 +54,14 @@ export default function App() {
     setView(nextView);
   }
 
-  let body;
-  if (view === 'host') {
-    body = <HostView gameAPI={gameAPI} />;
-  } else if (view === 'screen') {
-    body = <ScreenView gameAPI={gameAPI} />;
-  } else {
-    body = <PlayerView gameAPI={gameAPI} />;
-  }
+  // Only two views remain: Screen (projector) and Player (phones, default).
+  // An unknown view (e.g. a stale ?view=host link) falls back to play.
+  const body =
+    view === 'screen' ? (
+      <ScreenView gameAPI={gameAPI} />
+    ) : (
+      <PlayerView gameAPI={gameAPI} />
+    );
 
   return (
     <div style={{ fontFamily: FONT, background: COLORS.bg, minHeight: '100vh' }}>

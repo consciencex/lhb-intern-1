@@ -9,6 +9,8 @@ import {
   meterLabel,
   reportProfile,
   aggregate,
+  aggregateByScenario,
+  optimalRate,
   isRoomSplit,
   buildScoreboard,
 } from './gameLogic';
@@ -256,6 +258,70 @@ describe('aggregate', () => {
     const decisions = [{ choice: 'automate' }, { choice: 'hitl' }, { choice: 'manual' }];
     const agg = aggregate(decisions);
     expect(agg.bars.map((b) => b.pct)).toEqual([33, 33, 33]);
+  });
+});
+
+describe('aggregateByScenario', () => {
+  it('returns one aggregate per scenario index (length === scenarioCount)', () => {
+    const result = aggregateByScenario([], 6);
+    expect(result).toHaveLength(6);
+    // Every slot is a fully-formed (zeroed) aggregate — no divide-by-zero.
+    result.forEach((agg) => {
+      expect(agg.total).toBe(0);
+      expect(agg.bars.map((b) => b.pct)).toEqual([0, 0, 0]);
+    });
+  });
+
+  it('buckets decisions into their scenarioIdx slot', () => {
+    const decisions = [
+      { scenarioIdx: 0, choice: 'automate', isBest: false },
+      { scenarioIdx: 0, choice: 'hitl', isBest: true },
+      { scenarioIdx: 2, choice: 'manual', isBest: false },
+    ];
+    const result = aggregateByScenario(decisions, 3);
+    expect(result).toHaveLength(3);
+    expect(result[0].total).toBe(2);
+    expect(result[0].counts).toEqual({ automate: 1, hitl: 1, manual: 0 });
+    expect(result[1].total).toBe(0);
+    expect(result[2].total).toBe(1);
+    expect(result[2].counts).toEqual({ automate: 0, hitl: 0, manual: 1 });
+  });
+
+  it('ignores decisions whose scenarioIdx is out of range', () => {
+    const decisions = [
+      { scenarioIdx: 5, choice: 'hitl', isBest: true },
+      { scenarioIdx: 0, choice: 'automate', isBest: false },
+    ];
+    const result = aggregateByScenario(decisions, 2);
+    expect(result).toHaveLength(2);
+    expect(result[0].total).toBe(1);
+    expect(result[1].total).toBe(0);
+  });
+});
+
+describe('optimalRate', () => {
+  it('is 0 when there are no decisions (no divide-by-zero)', () => {
+    expect(optimalRate([])).toBe(0);
+  });
+
+  it('is the fraction of decisions with isBest === true', () => {
+    const decisions = [
+      { isBest: true },
+      { isBest: false },
+      { isBest: true },
+      { isBest: false },
+    ];
+    expect(optimalRate(decisions)).toBe(0.5);
+  });
+
+  it('is 1 when every decision is best', () => {
+    expect(optimalRate([{ isBest: true }, { isBest: true }])).toBe(1);
+  });
+
+  it('treats only strictly true isBest as optimal', () => {
+    // 1 of 3 best -> 1/3
+    const decisions = [{ isBest: true }, { isBest: false }, { isBest: undefined }];
+    expect(optimalRate(decisions)).toBeCloseTo(1 / 3, 10);
   });
 });
 

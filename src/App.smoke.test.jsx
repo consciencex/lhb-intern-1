@@ -32,19 +32,19 @@ describe('App — view wiring smoke test', () => {
 
   it('mounts the Screen view without crashing', () => {
     renderAppWith('/?view=screen&room=DEMO');
-    // Projector signature: the join line and the current-scenario header are
-    // always present (the ROOM RESPONSE bars are hidden until the host reveals).
+    // Projector signature: the join line and the live-results header are
+    // always present (everything is live — no reveal gating).
     expect(screen.getByText(/Join: room/i)).toBeInTheDocument();
-    expect(screen.getByText(/CURRENT SCENARIO/i)).toBeInTheDocument();
-    // The first scenario title is shown on the projector.
+    expect(screen.getByText(/Live Results/i)).toBeInTheDocument();
+    // Every scenario title is shown on the live dashboard.
     expect(screen.getByText(SCENARIOS[0].title)).toBeInTheDocument();
+    expect(screen.getByText(SCENARIOS[SCENARIOS.length - 1].title)).toBeInTheDocument();
   });
 
-  it('mounts the Host view without crashing', () => {
+  it('falls back to the Player view for a stale ?view=host link', () => {
     renderAppWith('/?view=host&room=DEMO');
-    // Host signature label (exact prototype copy) + Advance control.
-    expect(screen.getByText('NOW PLAYING')).toBeInTheDocument();
-    expect(screen.getByText(/Advance to Next Scenario/)).toBeInTheDocument();
+    // Host has been removed — the player intro renders instead of a host panel.
+    expect(screen.getByText('Start Simulation →')).toBeInTheDocument();
   });
 
   it('defaults to the Player view when no view param is present', () => {

@@ -26,19 +26,20 @@ describe('App routing', () => {
     expect(screen.getByRole('button', { name: /Start/i })).toBeInTheDocument();
   });
 
-  it('renders the Host view when ?view=host', () => {
-    setSearch('view=host');
-    render(<App />);
-    expect(screen.getByText(/Host Controls/i)).toBeInTheDocument();
-  });
-
   it('renders the Screen view when ?view=screen', () => {
     setSearch('view=screen');
     render(<App />);
-    // The screen always shows the current-scenario header and the join line
-    // (the ROOM RESPONSE bars are now hidden until the host reveals).
-    expect(screen.getByText(/CURRENT SCENARIO/i)).toBeInTheDocument();
+    // The live dashboard always shows the join line and the live-results header.
     expect(screen.getByText(/Join: room/i)).toBeInTheDocument();
+    expect(screen.getByText(/Live Results/i)).toBeInTheDocument();
+  });
+
+  it('falls back to the Player view for an unknown view (e.g. a stale ?view=host link)', () => {
+    setSearch('view=host');
+    render(<App />);
+    // No Host exists anymore — the player intro renders instead.
+    expect(screen.getByRole('button', { name: /Start/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Live Results/i)).toBeNull();
   });
 
   it('switches the rendered view when a TopNav tab is clicked', () => {
@@ -46,13 +47,13 @@ describe('App routing', () => {
     render(<App />);
     // Starts on the player intro
     expect(screen.getByRole('button', { name: /Start/i })).toBeInTheDocument();
-    // Click the Host tab in the nav
-    fireEvent.click(screen.getByRole('button', { name: /Host/i }));
-    // Host view now renders and the intro Start button is gone
-    expect(screen.getByText(/Host Controls/i)).toBeInTheDocument();
+    // Click the Screen tab in the nav
+    fireEvent.click(screen.getByRole('button', { name: /Screen/i }));
+    // Screen view now renders and the intro Start button is gone
+    expect(screen.getByText(/Live Results/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Start/i })).toBeNull();
     // URL reflects the new view
-    expect(new URLSearchParams(window.location.search).get('view')).toBe('host');
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('screen');
   });
 
   it('resyncs the rendered view on browser Back/Forward (popstate)', () => {
@@ -60,12 +61,12 @@ describe('App routing', () => {
     render(<App />);
     // Starts on the player intro
     expect(screen.getByRole('button', { name: /Start/i })).toBeInTheDocument();
-    // Simulate Back/Forward navigating to ?view=host: the URL changes via the
+    // Simulate Back/Forward navigating to ?view=screen: the URL changes via the
     // history stack and the browser fires popstate (no click handler runs).
-    window.history.pushState({}, '', '?view=host');
+    window.history.pushState({}, '', '?view=screen');
     fireEvent(window, new PopStateEvent('popstate'));
-    // App resyncs view state from the URL and renders the Host view
-    expect(screen.getByText(/Host Controls/i)).toBeInTheDocument();
+    // App resyncs view state from the URL and renders the Screen view
+    expect(screen.getByText(/Live Results/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Start/i })).toBeNull();
   });
 });

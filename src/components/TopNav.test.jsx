@@ -6,11 +6,11 @@ import { COLORS } from '../theme.js';
 afterEach(() => cleanup());
 
 describe('TopNav', () => {
-  it('renders three tabs: Player, Screen, Host', () => {
+  it('renders two tabs: Player and Screen (no Host)', () => {
     render(<TopNav view="play" onChange={() => {}} />);
     expect(screen.getByRole('button', { name: /Player/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Screen/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Host/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Host/i })).toBeNull();
   });
 
   it('highlights the active tab with COLORS.blue background', () => {
@@ -27,8 +27,8 @@ describe('TopNav', () => {
   it('calls onChange with the clicked view key', () => {
     const onChange = vi.fn();
     render(<TopNav view="play" onChange={onChange} />);
-    fireEvent.click(screen.getByRole('button', { name: /Host/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Screen/i }));
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith('host');
+    expect(onChange).toHaveBeenCalledWith('screen');
   });
 });

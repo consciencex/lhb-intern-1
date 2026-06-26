@@ -3,7 +3,6 @@ import { COLORS, FONT } from '../theme.js';
 const TABS = [
   { key: 'play', label: '📱 Player' },
   { key: 'screen', label: '🖥 Screen' },
-  { key: 'host', label: '🎛 Host' },
 ];
 
 export default function TopNav({ view, onChange }) {

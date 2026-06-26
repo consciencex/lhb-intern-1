@@ -1,6 +1,6 @@
 // src/views/PlayerView.test.jsx
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PlayerView from './PlayerView.jsx';
 import { createMockGameAPI } from '../game/mockGameAPI.js';
@@ -20,6 +20,13 @@ async function startGameAs(name) {
   return api;
 }
 
+const labelFor = (best) =>
+  best === 'automate'
+    ? 'Automate Fully'
+    : best === 'hitl'
+    ? 'Human-in-Loop'
+    : 'Manual Review';
+
 describe('PlayerView — intro / join', () => {
   it('shows the intro Start button and stats, and no scenario before starting', () => {
     const api = makeApi();
@@ -27,6 +34,19 @@ describe('PlayerView — intro / join', () => {
     expect(screen.getByText('Start Simulation →')).toBeInTheDocument();
     expect(screen.getByText('BREACH RISKS')).toBeInTheDocument();
     expect(screen.queryByText(SCENARIOS[0].title)).not.toBeInTheDocument();
+  });
+
+  it('Start calls joinRoom so a player row exists for the scoreboard', async () => {
+    const api = makeApi();
+    const joinSpy = vi.spyOn(api, 'joinRoom');
+    render(<PlayerView gameAPI={api} />);
+    fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
+      target: { value: 'Dana' },
+    });
+    fireEvent.click(screen.getByText('Start Simulation →'));
+    await screen.findByText(SCENARIOS[0].title);
+    expect(joinSpy).toHaveBeenCalledTimes(1);
+    expect(joinSpy).toHaveBeenCalledWith({ name: 'Dana' });
   });
 
   it('starts scenario 1 (loan) after entering a name and clicking Start, showing name + squad', async () => {
@@ -37,8 +57,8 @@ describe('PlayerView — intro / join', () => {
   });
 });
 
-describe('PlayerView — play / pick', () => {
-  it('best choice on loan awards 10 and emits the decision payload, then shows consequence', async () => {
+describe('PlayerView — self-paced play / pick', () => {
+  it('best choice on loan awards 10 and emits the decision payload, then shows consequence + Next', async () => {
     const api = makeApi();
     const awardSpy = vi.spyOn(api, 'award');
     const emitSpy = vi.spyOn(api, 'emit');
@@ -63,12 +83,13 @@ describe('PlayerView — play / pick', () => {
       breach: false,
     });
 
-    // Solo (default) -> Consequence shown and the self-advance Next button appears.
+    // Self-paced: Consequence shown AND the self-advance Next button always appears.
     expect(screen.getByText('Next Scenario →')).toBeInTheDocument();
   });
 
-  it('hosted (solo:false): after answering shows a waiting-for-host state and NO Next button', async () => {
-    const api = createMockGameAPI({ view: 'play', roomCode: 'DEMO', seed: false, solo: false });
+  it('Next advances LOCALLY to scenario 2 WITHOUT calling gameAPI.advance', async () => {
+    const api = makeApi();
+    const advanceSpy = vi.spyOn(api, 'advance');
     render(<PlayerView gameAPI={api} />);
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
       target: { value: 'Dana' },
@@ -76,33 +97,15 @@ describe('PlayerView — play / pick', () => {
     fireEvent.click(screen.getByText('Start Simulation →'));
     await screen.findByText(SCENARIOS[0].title);
 
-    fireEvent.click(screen.getByText('Human-in-Loop'));
+    fireEvent.click(screen.getByText(labelFor(SCENARIOS[0].best)));
+    fireEvent.click(screen.getByText('Next Scenario →'));
 
-    // Consequence still shown, but no room-advancing button — players must not
-    // yank the whole room forward; the host paces scenarios.
-    expect(screen.queryByText('Next Scenario →')).not.toBeInTheDocument();
-    expect(screen.getByText(/waiting for the host/i)).toBeInTheDocument();
-  });
-
-  it('hosted (solo:false): player follows the host advance (answer state resets)', async () => {
-    const api = createMockGameAPI({ view: 'play', roomCode: 'DEMO', seed: false, solo: false });
-    render(<PlayerView gameAPI={api} />);
-    fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
-      target: { value: 'Dana' },
-    });
-    fireEvent.click(screen.getByText('Start Simulation →'));
-    await screen.findByText(SCENARIOS[0].title);
-    fireEvent.click(screen.getByText('Human-in-Loop'));
-    expect(screen.getByText(/waiting for the host/i)).toBeInTheDocument();
-
-    // Host advances the room.
-    await act(async () => {
-      await api.advance();
-    });
-
-    // Player follows to scenario 2 with a fresh (unanswered) choice screen.
+    // Advanced to scenario 2 locally; the room index was never touched.
     await screen.findByText(SCENARIOS[1].title);
-    expect(screen.queryByText(/waiting for the host/i)).not.toBeInTheDocument();
+    expect(advanceSpy).not.toHaveBeenCalled();
+    expect(api.getStation().currentIdx).toBe(0);
+    // Fresh, unanswered choice screen for scenario 2.
+    expect(screen.queryByText('Next Scenario →')).not.toBeInTheDocument();
   });
 
   it('ignores a second pick after the scenario is answered', async () => {
@@ -125,7 +128,7 @@ describe('PlayerView — play / pick', () => {
     expect(emitSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('advancing through all scenarios reaches the ReportCard with the correct count', async () => {
+  it('full self-paced playthrough reaches the ReportCard with the correct count', async () => {
     const api = makeApi();
     render(<PlayerView gameAPI={api} />);
     fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
@@ -133,17 +136,10 @@ describe('PlayerView — play / pick', () => {
     });
     fireEvent.click(screen.getByText('Start Simulation →'));
 
-    // Answer every scenario with its best choice, then advance.
+    // Answer every scenario with its best choice, then self-advance.
     for (let i = 0; i < SCENARIOS.length; i++) {
       await screen.findByText(SCENARIOS[i].title);
-      const best = SCENARIOS[i].best; // 'automate' | 'hitl' | 'manual'
-      const label =
-        best === 'automate'
-          ? 'Automate Fully'
-          : best === 'hitl'
-          ? 'Human-in-Loop'
-          : 'Manual Review';
-      fireEvent.click(screen.getByText(label));
+      fireEvent.click(screen.getByText(labelFor(SCENARIOS[i].best)));
       fireEvent.click(screen.getByText('Next Scenario →'));
     }
 

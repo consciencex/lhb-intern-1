@@ -1,5 +1,5 @@
 // src/views/PlayerView.jsx
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { COLORS, FONT } from '../theme.js';
 import { SCENARIOS } from '../content/scenarios.js';
 import {
@@ -19,15 +19,14 @@ import ReportCard from '../components/ReportCard.jsx';
 const MAX_SCORE = SCENARIOS.length * POINTS_PER_BEST;
 
 export default function PlayerView({ gameAPI }) {
+  // Subscribe to the station only to read our own player row (for the squad
+  // label + scoreboard presence). Progression is fully LOCAL and self-paced —
+  // there is no host and we never read station.currentIdx or call advance().
   const station = useStation(gameAPI);
-  const currentIdx = station ? station.currentIdx : 0;
-  const status = station ? station.status : 'lobby';
-  // Solo (single-device) self-paces with a Next button; hosted rooms follow the
-  // host. Default true so a backend without isSolo() behaves as solo.
-  const solo = gameAPI.isSolo ? gameAPI.isSolo() : true;
 
   const [phase, setPhase] = useState('intro');
   const [name, setName] = useState('');
+  const [idx, setIdx] = useState(0); // LOCAL scenario index 0..SCENARIOS.length-1
   const [meters, setMeters] = useState(START_METERS);
   const [score, setScore] = useState(0);
   const [history, setHistory] = useState([]);
@@ -35,19 +34,8 @@ export default function PlayerView({ gameAPI }) {
   const [choice, setChoice] = useState(null);
   const [playerId, setPlayerId] = useState(null);
 
-  // Reset per-scenario answer state whenever the host (or self-advance) moves on.
-  const prevIdxRef = useRef(currentIdx);
-  useEffect(() => {
-    if (prevIdxRef.current !== currentIdx) {
-      prevIdxRef.current = currentIdx;
-      setAnswered(false);
-      setChoice(null);
-    }
-  }, [currentIdx]);
-
-  const idx = currentIdx;
   const scenario = SCENARIOS[idx];
-  const ended = status === 'ended' || idx >= SCENARIOS.length;
+  const ended = idx >= SCENARIOS.length;
   const playerName = name.trim() || 'Team Lead';
   const myPlayer = station && playerId
     ? station.players.find((p) => p.id === playerId)
@@ -65,6 +53,7 @@ export default function PlayerView({ gameAPI }) {
   function restart() {
     setPhase('intro');
     setName('');
+    setIdx(0);
     setMeters(START_METERS);
     setScore(0);
     setHistory([]);
@@ -96,8 +85,11 @@ export default function PlayerView({ gameAPI }) {
     gameAPI.award(delta);
   }
 
+  // Self-advance to the next scenario LOCALLY (not the room).
   function next() {
-    gameAPI.advance();
+    setIdx((i) => i + 1);
+    setAnswered(false);
+    setChoice(null);
   }
 
   const wrap = {
@@ -340,48 +332,27 @@ export default function PlayerView({ gameAPI }) {
         {answered && (
           <div style={{ animation: 'slideInUp 0.38s ease' }}>
             <ConsequenceCard scenario={scenario} choice={choice} />
-            {solo ? (
-              // Solo self-pacing on one device: the player advances themselves.
-              <button
-                onClick={next}
-                style={{
-                  width: '100%',
-                  padding: 14,
-                  borderRadius: 12,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  background: COLORS.navy,
-                  color: COLORS.white,
-                  margin: '0 0 10px',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Next Scenario →
-              </button>
-            ) : (
-              // Hosted room: the host paces scenarios. The player must NOT
-              // advance the whole room — show a locked/waiting state instead.
-              // They move on automatically when station.currentIdx changes.
-              <div
-                style={{
-                  width: '100%',
-                  padding: 14,
-                  borderRadius: 12,
-                  background: COLORS.white,
-                  border: `1px solid ${COLORS.border}`,
-                  color: COLORS.slate500,
-                  margin: '0 0 10px',
-                  textAlign: 'center',
-                  fontSize: 14,
-                  fontWeight: 600,
-                }}
-              >
-                ✓ Answer locked — waiting for the host…
-              </div>
-            )}
+            {/* Self-paced: the player always advances themselves to the next
+                scenario. There is no host — progression is purely local. */}
+            <button
+              onClick={next}
+              style={{
+                width: '100%',
+                padding: 14,
+                borderRadius: 12,
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 15,
+                fontWeight: 700,
+                background: COLORS.navy,
+                color: COLORS.white,
+                margin: '0 0 10px',
+                letterSpacing: '0.02em',
+              }}
+            >
+              Next Scenario →
+            </button>
           </div>
         )}
 
