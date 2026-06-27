@@ -8,15 +8,22 @@ import {
   teamMeters,
 } from '../game/gameLogic.js';
 import { useStation } from '../hooks/useStation.js';
-import TeamStandings from '../components/TeamStandings.jsx';
 import JoinQR from '../components/JoinQR.jsx';
 import ScenarioArt from '../components/ScenarioArt.jsx';
-import RadarChart from '../components/RadarChart.jsx';
-import { TEAMS } from '../content/teams.js';
+import TeamCard from '../components/TeamCard.jsx';
 
 /**
  * Live, real-time results dashboard for the projector. Everything is always
  * visible (no host, no reveal gating): whoever answers shows up instantly.
+ *
+ * Layout flows top → bottom in three grouped, responsive sections so it scales
+ * from a ~1280px laptop up to a wide projector with no fixed side column:
+ *   1. HEADER       — brand/title + room code + Reset + JoinQR, then the 3
+ *                     summary stat tiles as a wrapping row.
+ *   2. ROOM RESPONSES — the 6 per-scenario cards (auto-fit, 2-up on wide).
+ *   3. TEAMS        — one cohesive card per team merging the standing (avg
+ *                     pts/player, optimal%, answered) with that team's average
+ *                     radar (auto-fit grid, sorted by score desc).
  *
  * IMPORTANT: recompute over the raw decisions array every render. useStation
  * shallow-snapshots, so station.decisions keeps its identity when the backend
@@ -48,38 +55,41 @@ export default function ScreenView({ gameAPI }) {
   const profiles = teamMeters(players, decisions, SCENARIOS);
   const optimalPct = Math.round(optimalRate(decisions) * 100);
 
+  // Join the standings (score order) with each team's average meters by name so
+  // each TeamCard shows both halves together. teamStandings is the canonical
+  // ordering; teamMeters provides the radar profile + answered count.
+  const metersByTeam = new Map(profiles.map((p) => [p.team, p]));
+
   return (
     <div
       style={{
         minHeight: 'calc(100vh - 52px)',
         background: COLORS.screenBg,
-        display: 'flex',
         fontFamily: FONT,
         color: '#FFFFFF',
+        padding: 'clamp(20px, 2.6vw, 44px)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'clamp(26px, 3vw, 44px)',
+        boxSizing: 'border-box',
       }}
     >
-      {/* MAIN: summary bar + per-scenario live results */}
-      <div
-        style={{
-          flex: 1,
-          padding: '40px 48px',
-          borderRight: '1px solid rgba(255,255,255,0.05)',
-        }}
-      >
-        {/* Summary bar */}
+      {/* ── 1. HEADER ──────────────────────────────────────────────────────── */}
+      <header style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div
           style={{
             display: 'flex',
             alignItems: 'flex-start',
             justifyContent: 'space-between',
             gap: 24,
-            marginBottom: 14,
+            flexWrap: 'wrap',
           }}
         >
-          <div>
+          {/* Brand + room code */}
+          <div style={{ minWidth: 0 }}>
             <div
               style={{
-                fontSize: 13,
+                fontSize: 'clamp(11px, 0.9vw, 13px)',
                 fontWeight: 700,
                 color: '#93C5FD',
                 letterSpacing: '0.12em',
@@ -90,43 +100,61 @@ export default function ScreenView({ gameAPI }) {
             </div>
             <div
               style={{
-                fontSize: 28,
+                fontSize: 'clamp(24px, 2.6vw, 38px)',
                 fontWeight: 800,
                 color: '#FFFFFF',
-                lineHeight: 1.1,
+                lineHeight: 1.05,
               }}
             >
               Automate or Not? — Live Results
             </div>
           </div>
 
-          {/* Subtle facilitator control: reset the room before a fresh session.
-              Muted styling so it never dominates the projector. */}
-          <button
-            type="button"
-            data-testid="reset-room-button"
-            onClick={() => setConfirmReset(true)}
-            title="Reset room — clear all players and responses"
+          {/* Right cluster: Reset control + the join QR so players can scan. */}
+          <div
             style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 'clamp(14px, 1.4vw, 22px)',
               flexShrink: 0,
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.14)',
-              color: 'rgba(255,255,255,0.45)',
-              fontFamily: FONT,
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              padding: '6px 12px',
-              borderRadius: 8,
-              cursor: 'pointer',
             }}
           >
-            ↺ Reset
-          </button>
+            {/* Subtle facilitator control: reset the room before a fresh
+                session. Muted styling so it never dominates the projector. */}
+            <button
+              type="button"
+              data-testid="reset-room-button"
+              onClick={() => setConfirmReset(true)}
+              title="Reset room — clear all players and responses"
+              style={{
+                flexShrink: 0,
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.14)',
+                color: 'rgba(255,255,255,0.45)',
+                fontFamily: FONT,
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                padding: '6px 12px',
+                borderRadius: 8,
+                cursor: 'pointer',
+              }}
+            >
+              ↺ Reset
+            </button>
+            <JoinQR roomCode={roomCode} size={132} />
+          </div>
         </div>
 
-        {/* Live totals + optimal-rate teaching takeaway */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 34 }}>
+        {/* Live totals + optimal-rate teaching takeaway — a responsive row that
+            wraps on narrow viewports. */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 14,
+          }}
+        >
           <SummaryStat
             testid="total-players"
             value={players.length}
@@ -146,13 +174,16 @@ export default function ScreenView({ gameAPI }) {
             color="#4ADE80"
           />
         </div>
+      </header>
 
-        {/* Per-scenario live results */}
+      {/* ── 2. ROOM RESPONSES ──────────────────────────────────────────────── */}
+      <section>
+        <SectionHeading>Room Responses</SectionHeading>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 14,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+            gap: 16,
           }}
         >
           {SCENARIOS.map((scenario, i) => {
@@ -164,8 +195,9 @@ export default function ScreenView({ gameAPI }) {
                 style={{
                   background: 'rgba(255,255,255,0.04)',
                   border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 14,
-                  padding: '16px 18px',
+                  borderRadius: 16,
+                  padding: 'clamp(16px, 1.4vw, 22px)',
+                  minWidth: 0,
                 }}
               >
                 <div
@@ -180,7 +212,7 @@ export default function ScreenView({ gameAPI }) {
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#334155',
+                      color: '#64748B',
                       letterSpacing: '0.13em',
                     }}
                   >
@@ -202,15 +234,15 @@ export default function ScreenView({ gameAPI }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 11,
-                    marginBottom: 12,
+                    marginBottom: 14,
                   }}
                 >
                   <div
                     style={{
                       flexShrink: 0,
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
+                      width: 44,
+                      height: 44,
+                      borderRadius: 11,
                       background: 'rgba(59,130,246,0.10)',
                       border: '1px solid rgba(255,255,255,0.08)',
                       display: 'flex',
@@ -218,11 +250,11 @@ export default function ScreenView({ gameAPI }) {
                       justifyContent: 'center',
                     }}
                   >
-                    <ScenarioArt id={scenario.id} size={30} />
+                    <ScenarioArt id={scenario.id} size={32} />
                   </div>
                   <div
                     style={{
-                      fontSize: 16,
+                      fontSize: 'clamp(15px, 1.2vw, 18px)',
                       fontWeight: 700,
                       color: '#FFFFFF',
                       lineHeight: 1.25,
@@ -235,7 +267,7 @@ export default function ScreenView({ gameAPI }) {
                 {agg.bars.map((bar) => {
                   const optimal = bar.key === scenario.best;
                   return (
-                    <div key={bar.key} style={{ marginBottom: 9 }}>
+                    <div key={bar.key} style={{ marginBottom: 10 }}>
                       <div
                         style={{
                           display: 'flex',
@@ -245,7 +277,7 @@ export default function ScreenView({ gameAPI }) {
                       >
                         <span
                           style={{
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: optimal ? 700 : 500,
                             color: optimal ? '#4ADE80' : '#CBD5E1',
                           }}
@@ -255,7 +287,7 @@ export default function ScreenView({ gameAPI }) {
                         </span>
                         <span
                           style={{
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: 700,
                             color: '#FFFFFF',
                           }}
@@ -265,7 +297,7 @@ export default function ScreenView({ gameAPI }) {
                       </div>
                       <div
                         style={{
-                          height: 8,
+                          height: 9,
                           background: 'rgba(255,255,255,0.06)',
                           borderRadius: 5,
                           overflow: 'hidden',
@@ -289,7 +321,7 @@ export default function ScreenView({ gameAPI }) {
                 <div
                   data-testid="best-marker"
                   style={{
-                    marginTop: 8,
+                    marginTop: 10,
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#4ADE80',
@@ -302,45 +334,34 @@ export default function ScreenView({ gameAPI }) {
             );
           })}
         </div>
+      </section>
 
-        {/* TEAM PROFILES: each team's AVERAGE decision profile as a dark radar.
-            Recomputed every render (no identity-memo) per useStation's
-            shallow-snapshot contract. Up to 4 radars laid out as a clean row. */}
-        {profiles.length > 0 && (
-          <div style={{ marginTop: 40 }}>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#93C5FD',
-                letterSpacing: '0.15em',
-                marginBottom: 18,
-              }}
-            >
-              TEAM PROFILES
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 16,
-              }}
-            >
-              {profiles.map((row) => (
-                <TeamProfileCard key={row.team} row={row} />
-              ))}
-            </div>
+      {/* ── 3. TEAMS ───────────────────────────────────────────────────────── */}
+      {standings.length > 0 && (
+        <section>
+          <SectionHeading>Teams</SectionHeading>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 16,
+            }}
+          >
+            {standings.map((standing, i) => {
+              const profile = metersByTeam.get(standing.team);
+              return (
+                <TeamCard
+                  key={standing.team}
+                  standing={standing}
+                  meters={profile ? profile.meters : { eff: 50, acc: 50, risk: 50, comp: 50 }}
+                  answered={profile ? profile.answered : 0}
+                  rank={i + 1}
+                />
+              );
+            })}
           </div>
-        )}
-      </div>
-
-      {/* SIDEBAR: QR + scoreboard */}
-      <div style={{ width: 272, padding: '40px 24px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
-          <JoinQR roomCode={roomCode} size={180} />
-        </div>
-        <TeamStandings standings={standings} />
-      </div>
+        </section>
+      )}
 
       {confirmReset && (
         <ResetConfirmModal
@@ -351,6 +372,24 @@ export default function ScreenView({ gameAPI }) {
           onConfirm={handleConfirmReset}
         />
       )}
+    </div>
+  );
+}
+
+// Consistent section heading for the grouped Screen zones.
+function SectionHeading({ children }) {
+  return (
+    <div
+      style={{
+        fontSize: 'clamp(11px, 0.95vw, 13px)',
+        fontWeight: 700,
+        color: '#93C5FD',
+        letterSpacing: '0.15em',
+        textTransform: 'uppercase',
+        marginBottom: 16,
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -444,107 +483,37 @@ function ResetConfirmModal({ roomCode, playerCount, responseCount, onCancel, onC
   );
 }
 
-// Resolve a squad's accent color from its display name. Tolerant of both the
-// full name ('Team Alpha') and the bare squad word ('Alpha') so the seeded demo
-// (bare names) and live play (full names) both get the right accent. Mirrors the
-// helper in TeamStandings so the profile accent matches the standings accent.
-function teamColor(name) {
-  const t = TEAMS.find(
-    (x) =>
-      x.name === name ||
-      x.key.toLowerCase() === String(name).toLowerCase().replace(/^team\s+/i, ''),
-  );
-  return t ? t.color : COLORS.slate400;
-}
-
-// One team's AVERAGE decision profile, rendered as a compact dark radar with the
-// team name (in its accent color) and an "{answered}/{players} answered" caption.
-function TeamProfileCard({ row }) {
-  const color = teamColor(row.team);
-  return (
-    <div
-      data-testid="team-profile"
-      style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderTop: `3px solid ${color}`,
-        borderRadius: 14,
-        padding: '14px 16px 10px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        width: 190,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          alignSelf: 'flex-start',
-        }}
-      >
-        <span
-          style={{
-            width: 9,
-            height: 9,
-            borderRadius: 3,
-            background: color,
-            flexShrink: 0,
-          }}
-        />
-        <span
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: '#E2E8F0',
-          }}
-        >
-          {row.team}
-        </span>
-      </div>
-      <RadarChart metrics={row.meters} size={150} dark />
-      <div
-        style={{
-          fontSize: 10.5,
-          fontWeight: 600,
-          color: '#64748B',
-          letterSpacing: '0.04em',
-          alignSelf: 'flex-start',
-          marginTop: 2,
-        }}
-      >
-        {row.answered}/{row.players} answered
-      </div>
-    </div>
-  );
-}
-
 function SummaryStat({ testid, value, label, color }) {
   return (
     <div
       style={{
-        flex: 1,
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14,
-        padding: '16px 18px',
+        borderRadius: 16,
+        padding: 'clamp(16px, 1.6vw, 22px)',
         textAlign: 'center',
+        minWidth: 0,
       }}
     >
       <div
         data-testid={testid}
-        style={{ fontSize: 34, fontWeight: 800, color, letterSpacing: '-1px' }}
+        style={{
+          fontSize: 'clamp(30px, 3.4vw, 44px)',
+          fontWeight: 800,
+          color,
+          letterSpacing: '-1px',
+          lineHeight: 1,
+        }}
       >
         {value}
       </div>
       <div
         style={{
-          fontSize: 10,
+          fontSize: 'clamp(9px, 0.8vw, 11px)',
           fontWeight: 700,
           color: '#64748B',
           letterSpacing: '0.1em',
-          marginTop: 4,
+          marginTop: 6,
         }}
       >
         {label}

@@ -116,6 +116,59 @@ describe('RadarChart', () => {
   });
 });
 
+describe('RadarChart — contained axis labels (no overflow into siblings)', () => {
+  const metrics = { eff: 70, acc: 60, risk: 40, comp: 80 };
+
+  // Helper: read an axis label's <text> x and textAnchor.
+  function labelText(container, label) {
+    const nodes = Array.from(container.querySelectorAll('text'));
+    return nodes.find((n) => n.textContent === label);
+  }
+
+  it('clips to its own box (overflow hidden) so labels never bleed into neighbors', () => {
+    const { container } = render(<RadarChart metrics={metrics} size={150} dark />);
+    const svg = container.querySelector('svg');
+    // overflow:visible would let the left/right labels spill into adjacent
+    // radars — the redesign must clip to the component footprint.
+    expect(svg.style.overflow).toBe('hidden');
+  });
+
+  it('keeps every axis-label anchor x within the SVG box at a small size', () => {
+    const size = 150;
+    const { container } = render(<RadarChart metrics={metrics} size={size} dark />);
+    ['Efficiency', 'Accuracy', 'Risk', 'Compliance'].forEach((label) => {
+      const node = labelText(container, label);
+      const x = Number(node.getAttribute('x'));
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(size);
+    });
+  });
+
+  it('insets the side labels (Accuracy/Compliance) so their text stays inside the box', () => {
+    const size = 150;
+    const { container } = render(<RadarChart metrics={metrics} size={size} dark />);
+    // Accuracy is anchored "start" on the right — its x must leave room to the
+    // right edge for the word to render inside the box.
+    const acc = labelText(container, 'Accuracy');
+    expect(acc.getAttribute('text-anchor')).toBe('start');
+    expect(Number(acc.getAttribute('x'))).toBeLessThan(size * 0.62);
+    // Compliance is anchored "end" on the left — its x must leave room to the
+    // left edge for the word.
+    const comp = labelText(container, 'Compliance');
+    expect(comp.getAttribute('text-anchor')).toBe('end');
+    expect(Number(comp.getAttribute('x'))).toBeGreaterThan(size * 0.38);
+  });
+
+  it('scales the label font down at small sizes and up at large sizes', () => {
+    const small = render(<RadarChart metrics={metrics} size={120} dark />);
+    const smallFont = parseFloat(labelText(small.container, 'Efficiency').style.fontSize);
+    cleanup();
+    const large = render(<RadarChart metrics={metrics} size={260} dark />);
+    const largeFont = parseFloat(labelText(large.container, 'Efficiency').style.fontSize);
+    expect(largeFont).toBeGreaterThan(smallFont);
+  });
+});
+
 describe('RadarChart — dark variant (projector)', () => {
   const metrics = { eff: 70, acc: 60, risk: 40, comp: 80 };
 

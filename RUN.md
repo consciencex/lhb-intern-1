@@ -16,26 +16,36 @@ answering; nobody has to wait for anyone. As soon as a player answers, the
 projector's dashboard updates **live and immediately** — there is no "reveal"
 step and nothing is hidden. On the intro screen each player **chooses their own
 squad** (Team Alpha / Beta / Gamma / Delta) — Start is disabled until a squad is
-picked (name stays optional) — and the projector's **TEAM STANDINGS** panel ranks
+picked (name stays optional) — and the projector's **Teams** section ranks
 those squads. The **room code** is shown on the Screen ("Join: room DEMO") so the
 facilitator can read it out, and a **"Scan to join" QR code** on the Screen lets
 interns scan to open the player URL.
 
-The **Screen is a live, always-on results dashboard**: a summary bar (players
-joined, total responses, and the overall **"chose the optimal approach" rate** —
-the teaching takeaway), a compact **live card for every one of the six
-scenarios** (each with a flat scenario illustration, response breakdown bars for
-Automate / Human-in-Loop / Manual, the response count, and a ★ marker on the
-optimal answer), the **TEAM STANDINGS** panel (each squad's score, player
-count and optimal %), and a **TEAM PROFILES** row of radar charts.
+The **Screen is a live, always-on results dashboard** laid out top→bottom in
+three grouped, responsive sections that scale from a laptop up to a wide
+projector (CSS-grid `auto-fit`/`minmax` + `clamp()` — no fixed side column):
+
+1. **Header** — the title, the **room code** ("Join: room DEMO"), the
+   facilitator **Reset** control, a **"Scan to join" QR code**, and the three
+   summary stat tiles (players joined, total responses, and the overall **"chose
+   the optimal approach" rate** — the teaching takeaway).
+2. **Room Responses** — a compact **live card for every one of the six
+   scenarios** (each with a flat scenario illustration, response breakdown bars
+   for Automate / Human-in-Loop / Manual, the response count, and a ★ marker on
+   the optimal answer), 2-up on a wide projector and 1-up when narrow.
+3. **Teams** — **one cohesive card per squad** that merges the standing and the
+   profile into a single, scannable tile: the squad name (in its accent color),
+   the big **avg pts/player** score, the **optimal %**, the
+   "{answered}/{players} answered" line, **and** that squad's average 4-axis
+   radar — sorted by score (highest first).
+
 **Team score is the AVERAGE points per player** (total optimal-answer points ÷
 squad size, rounded) so the competition is **fair across team sizes** — a bigger
 squad no longer wins on headcount, and two squads with the same total are ranked
-by the smaller (higher per-player average) one. **TEAM PROFILES** shows each
-squad's **average decision profile** as a compact 4-axis radar
-(**Efficiency / Accuracy / Risk / Compliance**): every member's accumulated
-meters are derived by replaying their decisions and then averaged across the
-members who have answered, with an "{answered}/{players} answered" caption.
+by the smaller (higher per-player average) one. Each card's **average decision
+profile** is a compact 4-axis radar (**Efficiency / Accuracy / Risk /
+Compliance**): every member's accumulated meters are derived by replaying their
+decisions and then averaged across the members who have answered.
 Everything is visible from the start and updates in real time as answers arrive.
 
 **Reset the room (facilitator).** The person running the Screen can wipe the room
@@ -234,7 +244,7 @@ players drive themselves.
    scan the projector's QR). Enter a name (optional) and **choose a squad** on
    each — **Start Simulation →** stays disabled until a squad is picked — then tap
    it. On the **Screen** view the **PLAYERS JOINED** total rises as each joins and
-   the **TEAM STANDINGS** panel begins to populate.
+   the **Teams** section begins to populate.
 
 2. **Players are self-paced (no host, no waiting).**
    On a phone, answer scenario 1, then tap **Next Scenario →**. That device moves
@@ -249,13 +259,13 @@ players drive themselves.
    reveal: the matching scenario's live card shows the response bars and count
    change, **TOTAL RESPONSES** ticks up, and the overall **"chose the optimal
    approach" rate** recomputes. The ★ marker on each card always points at the
-   optimal answer so viewers learn where AI belongs. The **TEAM STANDINGS** panel
-   ranks the four **squads** (Team Alpha / Beta / Gamma / Delta) — each player
-   chose their own squad at join — by **average points per player** (fair across
-   squad sizes), with player count and optimal %. Below the scenarios, the
-   **TEAM PROFILES** row shows each squad's **average decision profile** as a
-   compact radar (Efficiency / Accuracy / Risk / Compliance) with an
-   "{answered}/{players} answered" caption.
+   optimal answer so viewers learn where AI belongs. Below the scenarios, the
+   **Teams** section shows **one cohesive card per squad** (Team Alpha / Beta /
+   Gamma / Delta) — each player chose their own squad at join — ranked by
+   **average points per player** (fair across squad sizes). Each card merges the
+   squad's score, optimal %, "{answered}/{players} answered" count, **and** its
+   **average decision profile** as a compact radar (Efficiency / Accuracy / Risk
+   / Compliance) into one tile.
 
 4. **Breach card appears on a bad high-risk pick.**
    On a phone, advance to a **high-risk** scenario (e.g. **Suspicious Transaction

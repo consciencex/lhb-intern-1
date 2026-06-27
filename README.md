@@ -4,13 +4,15 @@ A live, in-room workshop game for ~30 bank interns. Each player is a **Team
 Lead** on their **phone** and plays **self-paced** — no host, no waiting. On the
 intro screen the player enters an optional name and **chooses one of four squads**
 (Team Alpha / Beta / Gamma / Delta) before starting. A **projector** shows a
-**live results dashboard**: every answer shows up instantly with per-scenario
-response breakdowns, an overall "chose the optimal approach" rate, a
-**TEAM STANDINGS** panel that ranks the four squads by **average points per
-player** (fair across squad sizes — bigger squads don't win on headcount; with
-player count and each squad's optimal %), and a **TEAM PROFILES** row of radar
-charts showing **each squad's average decision profile**
-(**Efficiency / Accuracy / Risk / Compliance**, derived from their decisions).
+**live results dashboard** laid out in three grouped, responsive sections
+(header, room responses, teams): every answer shows up instantly with
+per-scenario response breakdowns, an overall "chose the optimal approach" rate,
+and a **Teams** section of **one cohesive card per squad**. Each team card
+ranks by **average points per player** (fair across squad sizes — bigger squads
+don't win on headcount) and merges that squad's score, optimal %, answered
+count, **and** its **average decision profile** radar
+(**Efficiency / Accuracy / Risk / Compliance**, derived from their decisions)
+into a single tile.
 The facilitator running the Screen can **reset the
 room** before each session with the subtle **↺ Reset** button in the dashboard
 header (a confirmation modal guards it) — this clears all players and responses
