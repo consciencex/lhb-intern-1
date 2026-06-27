@@ -168,14 +168,18 @@ export default function RadarChart({ metrics, size = 200, dark = false }) {
           let lx;
           let ly;
           if (a.angle === 0) {
-            // right: Accuracy — anchored "start", inset from the right edge.
-            anchor = 'start';
-            lx = sideInset;
-            ly = cy;
-          } else if (a.angle === 180) {
-            // left: Compliance — anchored "end", inset from the left edge.
+            // right: Accuracy — sits on the RIGHT half (matching the right-
+            // pointing spoke/vertex). Anchored "end" near the right edge so the
+            // word extends leftward into the box and stays fully contained.
             anchor = 'end';
             lx = size - sideInset;
+            ly = cy;
+          } else if (a.angle === 180) {
+            // left: Compliance — sits on the LEFT half (matching the left-
+            // pointing spoke/vertex). Anchored "start" near the left edge so the
+            // word extends rightward into the box and stays fully contained.
+            anchor = 'start';
+            lx = sideInset;
             ly = cy;
           } else {
             // top/bottom: centered on the vertical axis.

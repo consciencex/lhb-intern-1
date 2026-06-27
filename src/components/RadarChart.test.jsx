@@ -144,19 +144,41 @@ describe('RadarChart — contained axis labels (no overflow into siblings)', () 
     });
   });
 
+  it('puts the right axis (Accuracy) on the RIGHT half and the left axis (Compliance) on the LEFT half', () => {
+    // Orientation lock: the spokes/vertices point Accuracy right + Compliance
+    // left (angle 0 vs 180), so the LABELS must match or the chart misreads.
+    // Guards against silently re-swapping the two side labels.
+    const size = 200;
+    const cx = size / 2;
+    const { container } = render(<RadarChart metrics={metrics} size={size} dark />);
+
+    const acc = labelText(container, 'Accuracy');
+    const comp = labelText(container, 'Compliance');
+    // Accuracy sits on the right half, Compliance on the left half.
+    expect(Number(acc.getAttribute('x'))).toBeGreaterThan(cx);
+    expect(Number(comp.getAttribute('x'))).toBeLessThan(cx);
+    // Their per-axis value <text> must follow the same side as the label.
+    const accVal = container.querySelector('[data-testid="radar-value-acc"]');
+    const compVal = container.querySelector('[data-testid="radar-value-comp"]');
+    expect(Number(accVal.getAttribute('x'))).toBeGreaterThan(cx);
+    expect(Number(compVal.getAttribute('x'))).toBeLessThan(cx);
+  });
+
   it('insets the side labels (Accuracy/Compliance) so their text stays inside the box', () => {
     const size = 150;
     const { container } = render(<RadarChart metrics={metrics} size={size} dark />);
-    // Accuracy is anchored "start" on the right — its x must leave room to the
-    // right edge for the word to render inside the box.
+    // Accuracy is anchored "end" near the right edge — text extends leftward
+    // into the box, and the anchor stays on the right half and off the edge.
     const acc = labelText(container, 'Accuracy');
-    expect(acc.getAttribute('text-anchor')).toBe('start');
-    expect(Number(acc.getAttribute('x'))).toBeLessThan(size * 0.62);
-    // Compliance is anchored "end" on the left — its x must leave room to the
-    // left edge for the word.
+    expect(acc.getAttribute('text-anchor')).toBe('end');
+    expect(Number(acc.getAttribute('x'))).toBeLessThanOrEqual(size);
+    expect(Number(acc.getAttribute('x'))).toBeGreaterThan(size * 0.5);
+    // Compliance is anchored "start" near the left edge — text extends rightward
+    // into the box, and the anchor stays on the left half and off the edge.
     const comp = labelText(container, 'Compliance');
-    expect(comp.getAttribute('text-anchor')).toBe('end');
-    expect(Number(comp.getAttribute('x'))).toBeGreaterThan(size * 0.38);
+    expect(comp.getAttribute('text-anchor')).toBe('start');
+    expect(Number(comp.getAttribute('x'))).toBeGreaterThanOrEqual(0);
+    expect(Number(comp.getAttribute('x'))).toBeLessThan(size * 0.5);
   });
 
   it('scales the label font down at small sizes and up at large sizes', () => {
