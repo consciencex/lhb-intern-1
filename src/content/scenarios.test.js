@@ -76,6 +76,19 @@ describe('SCENARIOS schema integrity', () => {
     }
   });
 
+  it('every scenario (all 6 ids) has a context array of at least 3 non-empty strings', () => {
+    const ids = SCENARIOS.map((s) => s.id);
+    expect(ids).toEqual(['loan', 'faq', 'aml', 'statement', 'kyc', 'complaint']);
+    for (const s of SCENARIOS) {
+      expect(Array.isArray(s.context)).toBe(true);
+      expect(s.context.length).toBeGreaterThanOrEqual(3);
+      for (const line of s.context) {
+        expect(typeof line).toBe('string');
+        expect(line.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('every scenario has all CHOICE_ORDER keys in choices', () => {
     for (const s of SCENARIOS) {
       for (const key of CHOICE_ORDER) {

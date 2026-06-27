@@ -17,7 +17,9 @@ header (a confirmation modal guards it) — this clears all players and response
 and returns the live dashboard to 0, no database access required. Players read a
 banking work scenario (loan
 approvals, AML monitoring, KYC, complaints, …), each shown with a clean flat
-illustration, pick one of three approaches —
+illustration and a short **"Key Considerations"** list of the tradeoffs to weigh
+(efficiency vs accuracy vs risk vs compliance) before deciding, pick one of three
+approaches —
 **Automate Fully / Human-in-Loop / Manual Review** — and immediately see the
 consequence, a 4-axis **radar chart** of their team metrics
 (**Efficiency / Accuracy / Risk / Compliance**) update, and a red **COMPLIANCE

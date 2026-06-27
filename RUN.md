@@ -2,7 +2,9 @@
 
 A live workshop game for ~30 bank interns. Each player is a **Team Lead** on a
 phone; a projector shows a **live results dashboard**. Players read a banking work
-scenario, pick one of three approaches
+scenario — including a short **"Key Considerations"** list that surfaces the
+tradeoffs (efficiency vs accuracy vs risk vs compliance) to weigh before
+deciding — then pick one of three approaches
 (**Automate Fully / Human-in-Loop / Manual Review**), see an immediate
 consequence and a 4-axis team-metrics **radar chart**
 (**Efficiency / Accuracy / Risk / Compliance**) update (plus a red **BREACH**

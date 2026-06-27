@@ -2,6 +2,9 @@ import { COLORS, FONT } from '../theme.js';
 import ScenarioArt from './ScenarioArt.jsx';
 
 export default function ScenarioCard({ scenario, qNum, qTotal, playerName }) {
+  // The "Key Considerations" are the tradeoffs a player should weigh before
+  // choosing. Guard against scenarios with no context so older/edge data renders.
+  const considerations = Array.isArray(scenario.context) ? scenario.context : [];
   return (
     <div
       style={{
@@ -122,6 +125,64 @@ export default function ScenarioCard({ scenario, qNum, qTotal, playerName }) {
           </span>
         ))}
       </div>
+      {considerations.length > 0 && (
+        <div
+          style={{
+            marginTop: '16px',
+            paddingTop: '14px',
+            borderTop: '1px solid rgba(255,255,255,0.12)',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '10.5px',
+              fontWeight: 700,
+              color: 'rgba(255,255,255,0.55)',
+              letterSpacing: '0.12em',
+              marginBottom: '9px',
+            }}
+          >
+            KEY CONSIDERATIONS
+          </div>
+          <ul
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '7px',
+            }}
+          >
+            {considerations.map((line, i) => (
+              <li
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  fontSize: '12.5px',
+                  lineHeight: 1.45,
+                  color: 'rgba(255,255,255,0.8)',
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    marginTop: '6px',
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: COLORS.blueAccent,
+                  }}
+                />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
