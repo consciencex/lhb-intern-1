@@ -11,8 +11,10 @@ and each squad's optimal %). Players read a banking work scenario (loan
 approvals, AML monitoring, KYC, complaints, …), each shown with a clean flat
 illustration, pick one of three approaches —
 **Automate Fully / Human-in-Loop / Manual Review** — and immediately see the
-consequence, three personal meters move, and a red **COMPLIANCE BREACH** card on
-a bad high-risk choice, then advance themselves to the next scenario. At the end
+consequence, a 4-axis **radar chart** of their team metrics
+(**Efficiency / Accuracy / Risk / Compliance**) update, and a red **COMPLIANCE
+BREACH** card on a bad high-risk choice, then advance themselves to the next
+scenario. At the end
 each player gets a personal **MISSION DEBRIEF** report card. The point is the
 discussion the spread of answers provokes, not the score.
 

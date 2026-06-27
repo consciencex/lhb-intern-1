@@ -84,12 +84,14 @@ describe('SCENARIOS schema integrity', () => {
     }
   });
 
-  it('every choice has numeric eff/risk/comp, boolean breach and a non-empty msg', () => {
+  it('every choice has numeric eff/acc/risk/comp, boolean breach and a non-empty msg', () => {
     for (const s of SCENARIOS) {
       for (const key of CHOICE_ORDER) {
         const c = s.choices[key];
         expect(typeof c.eff).toBe('number');
         expect(Number.isNaN(c.eff)).toBe(false);
+        expect(typeof c.acc).toBe('number');
+        expect(Number.isNaN(c.acc)).toBe(false);
         expect(typeof c.risk).toBe('number');
         expect(Number.isNaN(c.risk)).toBe(false);
         expect(typeof c.comp).toBe('number');
@@ -97,6 +99,22 @@ describe('SCENARIOS schema integrity', () => {
         expect(typeof c.breach).toBe('boolean');
         expect(typeof c.msg).toBe('string');
         expect(c.msg.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('every choice has the exact accuracy (acc) delta from the contract', () => {
+    const expected = {
+      loan: { automate: -20, hitl: 25, manual: 10 },
+      faq: { automate: 20, hitl: 20, manual: -15 },
+      aml: { automate: -25, hitl: 25, manual: -10 },
+      statement: { automate: 25, hitl: 15, manual: -30 },
+      kyc: { automate: -20, hitl: 25, manual: 5 },
+      complaint: { automate: -20, hitl: 22, manual: 15 },
+    };
+    for (const s of SCENARIOS) {
+      for (const key of CHOICE_ORDER) {
+        expect(s.choices[key].acc).toBe(expected[s.id][key]);
       }
     }
   });

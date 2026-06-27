@@ -1,5 +1,5 @@
 import { COLORS, FONT } from '../theme';
-import { reportProfile } from '../game/gameLogic';
+import RadarChart from './RadarChart.jsx';
 
 export default function ReportCard({
   score,
@@ -11,30 +11,7 @@ export default function ReportCard({
   meters,
   onRestart,
 }) {
-  const profile = reportProfile(meters);
   const breachSuffix = breachCount !== 1 ? 'es' : '';
-
-  const barTrack = {
-    height: '9px',
-    background: COLORS.track,
-    borderRadius: '5px',
-    overflow: 'hidden',
-  };
-  const barFill = (pct, color) => ({
-    height: '100%',
-    width: pct + '%',
-    background: color,
-    borderRadius: '5px',
-    transition: 'width 1.1s cubic-bezier(0.34,1.56,0.64,1)',
-  });
-  const rowHead = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '7px',
-  };
-  const rowLabel = { fontSize: '13px', fontWeight: 500, color: COLORS.slate700 };
-  const rowValue = (color) => ({ fontSize: '13px', fontWeight: 700, color });
 
   return (
     <div style={{ animation: 'slideInUp 0.45s ease', fontFamily: FONT }}>
@@ -58,7 +35,7 @@ export default function ReportCard({
         >
           MISSION DEBRIEF
         </div>
-        <div style={{ fontSize: '62px', fontWeight: 800, color: '#fff', lineHeight: 1, letterSpacing: '-2px' }}>
+        <div data-testid="debrief-score" style={{ fontSize: '62px', fontWeight: 800, color: '#fff', lineHeight: 1, letterSpacing: '-2px' }}>
           {score}
         </div>
         <div style={{ fontSize: '16px', color: 'rgba(255,255,255,0.45)', marginBottom: '8px' }}>
@@ -103,41 +80,14 @@ export default function ReportCard({
             fontWeight: 700,
             color: COLORS.slate400,
             letterSpacing: '0.1em',
-            marginBottom: '18px',
+            marginBottom: '6px',
+            textAlign: 'center',
           }}
         >
           TEAM PERFORMANCE PROFILE
         </div>
 
-        <div style={{ marginBottom: '14px' }}>
-          <div style={rowHead}>
-            <div style={rowLabel}>⚡ Efficiency</div>
-            <div style={rowValue(profile.eff.color)}>{profile.eff.label}</div>
-          </div>
-          <div style={barTrack}>
-            <div data-testid="report-bar-eff" style={barFill(profile.eff.pct, profile.eff.color)} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <div style={rowHead}>
-            <div style={rowLabel}>⚠️ Risk Control</div>
-            <div style={rowValue(profile.risk.color)}>{profile.risk.label}</div>
-          </div>
-          <div style={barTrack}>
-            <div data-testid="report-bar-risk" style={barFill(profile.risk.safePct, profile.risk.color)} />
-          </div>
-        </div>
-
-        <div>
-          <div style={rowHead}>
-            <div style={rowLabel}>🛡️ Compliance</div>
-            <div style={rowValue(profile.comp.color)}>{profile.comp.label}</div>
-          </div>
-          <div style={barTrack}>
-            <div data-testid="report-bar-comp" style={barFill(profile.comp.pct, profile.comp.color)} />
-          </div>
-        </div>
+        <RadarChart metrics={meters} size={240} />
       </div>
 
       <button

@@ -1,7 +1,7 @@
 import { COLORS } from '../theme';
 import { CHOICE_ORDER, CHOICE_LABELS } from '../content/scenarios';
 
-export const START_METERS = { eff: 50, risk: 50, comp: 50 };
+export const START_METERS = { eff: 50, acc: 50, risk: 50, comp: 50 };
 export const POINTS_PER_BEST = 10;
 
 export function clamp(v) {
@@ -11,12 +11,16 @@ export function clamp(v) {
   return r;
 }
 
+// Add the choice deltas to each meter, generalizing over whatever keys the
+// meters object carries (eff/acc/risk/comp). Pure: never mutates the inputs,
+// returns a fresh object, and clamps every result to 0..100. A missing delta
+// for a present key is treated as 0.
 export function applyChoice(meters, deltas) {
-  return {
-    eff: clamp(meters.eff + deltas.eff),
-    risk: clamp(meters.risk + deltas.risk),
-    comp: clamp(meters.comp + deltas.comp),
-  };
+  const next = {};
+  for (const key of Object.keys(meters)) {
+    next[key] = clamp(meters[key] + (deltas[key] || 0));
+  }
+  return next;
 }
 
 export function isBest(choiceKey, scenario) {
@@ -33,7 +37,7 @@ export function meterColor(type, value) {
     if (value <= 65) return COLORS.amber;
     return COLORS.red;
   }
-  // 'eff' or 'comp'
+  // 'eff', 'acc' or 'comp' — higher is better.
   if (value >= 60) return COLORS.green;
   if (value >= 38) return COLORS.amber;
   return COLORS.red;
@@ -44,6 +48,11 @@ export function meterLabel(type, value) {
     if (value >= 65) return 'High Efficiency';
     if (value >= 42) return 'Balanced';
     return 'Low Efficiency';
+  }
+  if (type === 'acc') {
+    if (value >= 65) return 'High Accuracy';
+    if (value >= 42) return 'Balanced';
+    return 'Low Accuracy';
   }
   if (type === 'risk') {
     if (value <= 38) return 'Risk-Aware';
@@ -56,23 +65,20 @@ export function meterLabel(type, value) {
   return 'At Risk';
 }
 
+// Build a per-axis profile for the radar. Each of the four dimensions reports
+// the RAW meter value (0..100 — the radar plots raw magnitudes on every axis),
+// plus a color and label derived from that raw value via meterColor/meterLabel.
 export function reportProfile(meters) {
+  const axis = (type) => ({
+    value: meters[type],
+    color: meterColor(type, meters[type]),
+    label: meterLabel(type, meters[type]),
+  });
   return {
-    eff: {
-      pct: meters.eff,
-      color: meterColor('eff', meters.eff),
-      label: meterLabel('eff', meters.eff),
-    },
-    risk: {
-      safePct: 100 - meters.risk,
-      color: meterColor('risk', meters.risk),
-      label: meterLabel('risk', meters.risk),
-    },
-    comp: {
-      pct: meters.comp,
-      color: meterColor('comp', meters.comp),
-      label: meterLabel('comp', meters.comp),
-    },
+    eff: axis('eff'),
+    acc: axis('acc'),
+    risk: axis('risk'),
+    comp: axis('comp'),
   };
 }
 

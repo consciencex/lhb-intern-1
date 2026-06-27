@@ -4,8 +4,9 @@ A live workshop game for ~30 bank interns. Each player is a **Team Lead** on a
 phone; a projector shows a **live results dashboard**. Players read a banking work
 scenario, pick one of three approaches
 (**Automate Fully / Human-in-Loop / Manual Review**), see an immediate
-consequence and three personal meters move (plus a red **BREACH** card on a bad
-high-risk choice), and get a personal report card at the end.
+consequence and a 4-axis team-metrics **radar chart**
+(**Efficiency / Accuracy / Risk / Compliance**) update (plus a red **BREACH**
+card on a bad high-risk choice), and get a personal report card at the end.
 
 The game is **fully self-paced — there is no host.** Each player moves through
 the six scenarios at their own speed using a **"Next Scenario →"** button after
@@ -246,7 +247,8 @@ players drive themselves.
    On a phone, self-advance past the last scenario. That device must show the
    **MISSION DEBRIEF** report card: score / max, name, "X of N optimal
    decisions", a breach pill if any breaches were triggered, and the
-   **TEAM PERFORMANCE PROFILE** meters.
+   **TEAM PERFORMANCE PROFILE** 4-axis radar chart
+   (Efficiency / Accuracy / Risk / Compliance).
 
 6. **One answer per scenario is enforced.**
    On a phone, pick an approach, then try to tap a *different* approach for the

@@ -102,6 +102,42 @@ describe('PlayerView — squad selection gating', () => {
   });
 });
 
+describe('PlayerView — in-game metrics radar', () => {
+  it('shows the TEAM METRICS radar (4 axis labels) in-game, not the old meter bars', async () => {
+    const api = makeApi();
+    const { container } = render(<PlayerView gameAPI={api} />);
+    fireEvent.change(screen.getByPlaceholderText('Enter your name…'), {
+      target: { value: 'Dana' },
+    });
+    chooseTeam();
+    fireEvent.click(screen.getByText('Start Simulation →'));
+    await screen.findByText(SCENARIOS[0].title);
+
+    expect(screen.getByText('TEAM METRICS')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByText('Efficiency')).toBeInTheDocument();
+    expect(screen.getByText('Accuracy')).toBeInTheDocument();
+    expect(screen.getByText('Risk')).toBeInTheDocument();
+    expect(screen.getByText('Compliance')).toBeInTheDocument();
+    // The old per-metric bars are gone.
+    expect(screen.queryByTestId('meter-bar-eff')).not.toBeInTheDocument();
+  });
+
+  it('accumulates the accuracy (acc) meter from choices and shows it on the radar', async () => {
+    const api = makeApi();
+    render(<PlayerView gameAPI={api} />);
+    chooseTeam();
+    fireEvent.click(screen.getByText('Start Simulation →'));
+    await screen.findByText(SCENARIOS[0].title);
+
+    // Starts at 50.
+    expect(screen.getByTestId('radar-value-acc')).toHaveTextContent('50');
+    // loan.hitl has acc +25 -> 75.
+    fireEvent.click(screen.getByText('Human-in-Loop'));
+    expect(screen.getByTestId('radar-value-acc')).toHaveTextContent('75');
+  });
+});
+
 describe('PlayerView — self-paced play / pick', () => {
   it('best choice on loan awards 10 and emits the decision payload, then shows consequence + Next', async () => {
     const api = makeApi();

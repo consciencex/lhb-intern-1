@@ -13,9 +13,89 @@ import {
 import { useStation } from '../hooks/useStation.js';
 import ScenarioCard from '../components/ScenarioCard.jsx';
 import ChoiceButtons from '../components/ChoiceButtons.jsx';
-import Meters from '../components/Meters.jsx';
+import RadarChart from '../components/RadarChart.jsx';
 import ConsequenceCard from '../components/ConsequenceCard.jsx';
 import ReportCard from '../components/ReportCard.jsx';
+import { meterColor } from '../game/gameLogic.js';
+
+// In-game metrics legend rows (compact, beside-the-radar value readout).
+const METRIC_ROWS = [
+  { type: 'eff', icon: '⚡', name: 'Efficiency' },
+  { type: 'acc', icon: '🎯', name: 'Accuracy' },
+  { type: 'risk', icon: '⚠️', name: 'Risk' },
+  { type: 'comp', icon: '🛡️', name: 'Compliance' },
+];
+
+function MetricsPanel({ meters }) {
+  return (
+    <div
+      style={{
+        background: COLORS.white,
+        borderRadius: 16,
+        padding: 18,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        fontFamily: FONT,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: COLORS.slate400,
+          letterSpacing: '0.1em',
+          marginBottom: 10,
+        }}
+      >
+        TEAM METRICS
+      </div>
+
+      <RadarChart metrics={meters} size={210} />
+
+      {/* Compact value readout. The radar already labels each axis, so the
+          legend stays minimal — icon + colored value — to avoid duplicating
+          the full axis names. */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          marginTop: 14,
+          paddingTop: 14,
+          borderTop: `1px solid ${COLORS.border}`,
+        }}
+      >
+        {METRIC_ROWS.map((row) => {
+          const value = meters[row.type];
+          return (
+            <div
+              key={row.type}
+              title={row.name}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 3,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{row.icon}</span>
+              <span
+                data-testid={`metric-legend-${row.type}`}
+                style={{
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: meterColor(row.type, value),
+                  letterSpacing: '-0.5px',
+                }}
+              >
+                {value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const MAX_SCORE = SCENARIOS.length * POINTS_PER_BEST;
 
@@ -450,7 +530,7 @@ export default function PlayerView({ gameAPI }) {
           </div>
         )}
 
-        <Meters meters={meters} />
+        <MetricsPanel meters={meters} />
       </div>
     </div>
   );

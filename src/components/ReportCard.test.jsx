@@ -13,13 +13,14 @@ describe('ReportCard', () => {
     correctCount: 3,
     totalQ: 6,
     breachCount: 0,
-    meters: { eff: 70, risk: 30, comp: 80 },
+    meters: { eff: 70, acc: 65, risk: 30, comp: 80 },
     onRestart: () => {},
   };
 
   it('renders score, maxScore, player name, and the optimal-decisions line', () => {
     render(<ReportCard {...baseProps} />);
-    expect(screen.getByText('30')).toBeInTheDocument();
+    // Scope to the big debrief score so it isn't confused with a radar axis value.
+    expect(screen.getByTestId('debrief-score')).toHaveTextContent('30');
     expect(screen.getByText('/ 60 pts')).toBeInTheDocument();
     expect(screen.getByText('Asha')).toBeInTheDocument();
     expect(screen.getByText('3 of 6 optimal decisions')).toBeInTheDocument();
@@ -40,17 +41,30 @@ describe('ReportCard', () => {
     expect(screen.getByText('🚨 2 compliance breaches triggered')).toBeInTheDocument();
   });
 
-  it('renders the three profile bars and sets the Risk Control bar width to (100 - risk)%', () => {
-    render(<ReportCard {...baseProps} meters={{ eff: 70, risk: 30, comp: 80 }} />);
-    // Efficiency bar -> eff pct (70%)
-    const effBar = screen.getByTestId('report-bar-eff');
-    expect(effBar).toHaveStyle({ width: '70%' });
-    // Risk Control bar -> safePct = 100 - risk = 70%
-    const riskBar = screen.getByTestId('report-bar-risk');
-    expect(riskBar).toHaveStyle({ width: '70%' });
-    // Compliance bar -> comp pct (80%)
-    const compBar = screen.getByTestId('report-bar-comp');
-    expect(compBar).toHaveStyle({ width: '80%' });
+  it('renders a 4-axis performance-profile radar (labels + raw values), not the old bars', () => {
+    const { container } = render(
+      <ReportCard {...baseProps} meters={{ eff: 70, acc: 65, risk: 30, comp: 80 }} />,
+    );
+    // Radar is an SVG with all four axis labels.
+    expect(container.querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByText('Efficiency')).toBeInTheDocument();
+    expect(screen.getByText('Accuracy')).toBeInTheDocument();
+    expect(screen.getByText('Risk')).toBeInTheDocument();
+    expect(screen.getByText('Compliance')).toBeInTheDocument();
+    // Raw meter values are shown on each axis (no safePct inversion).
+    expect(screen.getByTestId('radar-value-eff')).toHaveTextContent('70');
+    expect(screen.getByTestId('radar-value-acc')).toHaveTextContent('65');
+    expect(screen.getByTestId('radar-value-risk')).toHaveTextContent('30');
+    expect(screen.getByTestId('radar-value-comp')).toHaveTextContent('80');
+    // The old per-metric bars are gone.
+    expect(screen.queryByTestId('report-bar-eff')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('report-bar-risk')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('report-bar-comp')).not.toBeInTheDocument();
+  });
+
+  it('keeps the PERFORMANCE PROFILE heading', () => {
+    render(<ReportCard {...baseProps} />);
+    expect(screen.getByText(/PERFORMANCE PROFILE/)).toBeInTheDocument();
   });
 
   it('calls onRestart when Play Again is clicked', () => {

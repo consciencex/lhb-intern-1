@@ -18,8 +18,8 @@ import {
 import { COLORS } from '../theme';
 
 describe('constants', () => {
-  it('START_METERS starts every meter at 50', () => {
-    expect(START_METERS).toEqual({ eff: 50, risk: 50, comp: 50 });
+  it('START_METERS starts every one of the four meters at 50', () => {
+    expect(START_METERS).toEqual({ eff: 50, acc: 50, risk: 50, comp: 50 });
   });
 
   it('POINTS_PER_BEST is 10', () => {
@@ -52,32 +52,47 @@ describe('clamp', () => {
 });
 
 describe('applyChoice', () => {
-  it('adds deltas to each meter', () => {
-    const result = applyChoice({ eff: 50, risk: 50, comp: 50 }, { eff: 10, risk: -5, comp: 20 });
-    expect(result).toEqual({ eff: 60, risk: 45, comp: 70 });
+  it('adds deltas to all four meters', () => {
+    const result = applyChoice(
+      { eff: 50, acc: 50, risk: 50, comp: 50 },
+      { eff: 10, acc: -5, risk: -5, comp: 20 },
+    );
+    expect(result).toEqual({ eff: 60, acc: 45, risk: 45, comp: 70 });
   });
 
-  it('clamps results to 0..100', () => {
-    const result = applyChoice({ eff: 95, risk: 5, comp: 50 }, { eff: 30, risk: -30, comp: 0 });
-    expect(result).toEqual({ eff: 100, risk: 0, comp: 50 });
+  it('clamps each of the four meters to 0..100', () => {
+    const result = applyChoice(
+      { eff: 95, acc: 5, risk: 5, comp: 50 },
+      { eff: 30, acc: -30, risk: -30, comp: 0 },
+    );
+    expect(result).toEqual({ eff: 100, acc: 0, risk: 0, comp: 50 });
   });
 
   it('does not mutate the input meters object', () => {
-    const meters = { eff: 50, risk: 50, comp: 50 };
-    applyChoice(meters, { eff: 10, risk: 10, comp: 10 });
-    expect(meters).toEqual({ eff: 50, risk: 50, comp: 50 });
+    const meters = { eff: 50, acc: 50, risk: 50, comp: 50 };
+    applyChoice(meters, { eff: 10, acc: 10, risk: 10, comp: 10 });
+    expect(meters).toEqual({ eff: 50, acc: 50, risk: 50, comp: 50 });
   });
 
   it('does not mutate the input deltas object', () => {
-    const deltas = { eff: 10, risk: 10, comp: 10 };
-    applyChoice({ eff: 50, risk: 50, comp: 50 }, deltas);
-    expect(deltas).toEqual({ eff: 10, risk: 10, comp: 10 });
+    const deltas = { eff: 10, acc: 10, risk: 10, comp: 10 };
+    applyChoice({ eff: 50, acc: 50, risk: 50, comp: 50 }, deltas);
+    expect(deltas).toEqual({ eff: 10, acc: 10, risk: 10, comp: 10 });
   });
 
   it('returns a new object reference each call', () => {
-    const meters = { eff: 50, risk: 50, comp: 50 };
-    const result = applyChoice(meters, { eff: 0, risk: 0, comp: 0 });
+    const meters = { eff: 50, acc: 50, risk: 50, comp: 50 };
+    const result = applyChoice(meters, { eff: 0, acc: 0, risk: 0, comp: 0 });
     expect(result).not.toBe(meters);
+  });
+
+  it('generalizes over the keys present in the meters object', () => {
+    // Only the keys present in meters are carried through and updated.
+    const result = applyChoice(
+      { eff: 50, acc: 50, risk: 50, comp: 50 },
+      { eff: 5, acc: 5, risk: 5, comp: 5 },
+    );
+    expect(Object.keys(result).sort()).toEqual(['acc', 'comp', 'eff', 'risk']);
   });
 });
 
@@ -124,6 +139,15 @@ describe('meterColor', () => {
     expect(meterColor('comp', 60)).toBe(COLORS.green);
     expect(meterColor('comp', 38)).toBe(COLORS.amber);
     expect(meterColor('comp', 37)).toBe(COLORS.red);
+  });
+
+  it('acc uses the same higher-is-better thresholds as eff/comp', () => {
+    expect(meterColor('acc', 60)).toBe(COLORS.green);
+    expect(meterColor('acc', 100)).toBe(COLORS.green);
+    expect(meterColor('acc', 38)).toBe(COLORS.amber);
+    expect(meterColor('acc', 59)).toBe(COLORS.amber);
+    expect(meterColor('acc', 37)).toBe(COLORS.red);
+    expect(meterColor('acc', 0)).toBe(COLORS.red);
   });
 
   it('risk: <=40 green, exact 40 is green', () => {
@@ -179,26 +203,51 @@ describe('meterLabel', () => {
     expect(meterLabel('comp', 64)).toBe('Marginal');
     expect(meterLabel('comp', 41)).toBe('At Risk');
   });
+
+  it('acc: >=65 High Accuracy, exact 65', () => {
+    expect(meterLabel('acc', 65)).toBe('High Accuracy');
+    expect(meterLabel('acc', 100)).toBe('High Accuracy');
+  });
+
+  it('acc: 42..64 Balanced, exact 42 and 64', () => {
+    expect(meterLabel('acc', 42)).toBe('Balanced');
+    expect(meterLabel('acc', 64)).toBe('Balanced');
+  });
+
+  it('acc: <42 Low Accuracy, exact 41', () => {
+    expect(meterLabel('acc', 41)).toBe('Low Accuracy');
+    expect(meterLabel('acc', 0)).toBe('Low Accuracy');
+  });
 });
 
 describe('reportProfile', () => {
-  it('maps eff and comp to {pct,color,label} and risk to {safePct,color,label}', () => {
-    const profile = reportProfile({ eff: 72, risk: 30, comp: 50 });
-    expect(profile.eff).toEqual({ pct: 72, color: COLORS.green, label: 'High Efficiency' });
-    expect(profile.comp).toEqual({ pct: 50, color: COLORS.amber, label: 'Marginal' });
-    expect(profile.risk).toEqual({ safePct: 70, color: COLORS.green, label: 'Risk-Aware' });
+  it('returns all four dimensions as {value,color,label} with the RAW meter value', () => {
+    const profile = reportProfile({ eff: 72, acc: 30, risk: 30, comp: 50 });
+    expect(profile.eff).toEqual({ value: 72, color: COLORS.green, label: 'High Efficiency' });
+    expect(profile.acc).toEqual({ value: 30, color: COLORS.red, label: 'Low Accuracy' });
+    expect(profile.risk).toEqual({ value: 30, color: COLORS.green, label: 'Risk-Aware' });
+    expect(profile.comp).toEqual({ value: 50, color: COLORS.amber, label: 'Marginal' });
   });
 
-  it('risk safePct is 100 minus the raw risk value', () => {
-    const profile = reportProfile({ eff: 50, risk: 80, comp: 50 });
-    expect(profile.risk.safePct).toBe(20);
+  it('value is the raw meter for every axis (radar plots raw values), including risk', () => {
+    // The radar plots raw values: high risk reaches further out on its axis.
+    const profile = reportProfile({ eff: 50, acc: 88, risk: 80, comp: 50 });
+    expect(profile.eff.value).toBe(50);
+    expect(profile.acc.value).toBe(88);
+    expect(profile.risk.value).toBe(80);
+    expect(profile.comp.value).toBe(50);
   });
 
-  it('risk color and label use the RAW risk value, not safePct', () => {
-    // raw risk 80 -> safePct 20. color/label must reflect raw 80 (High Risk / red), not 20.
-    const profile = reportProfile({ eff: 50, risk: 80, comp: 50 });
+  it('risk color and label use the raw risk value (high risk is red / High Risk)', () => {
+    const profile = reportProfile({ eff: 50, acc: 50, risk: 80, comp: 50 });
     expect(profile.risk.color).toBe(COLORS.red);
     expect(profile.risk.label).toBe('High Risk');
+  });
+
+  it('acc color and label reflect the raw accuracy value', () => {
+    const profile = reportProfile({ eff: 50, acc: 90, risk: 50, comp: 50 });
+    expect(profile.acc.color).toBe(COLORS.green);
+    expect(profile.acc.label).toBe('High Accuracy');
   });
 });
 
