@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { COLORS, FONT } from '../theme.js';
 import { SCENARIOS, CHOICE_LABELS } from '../content/scenarios.js';
 import {
@@ -21,9 +22,19 @@ import ScenarioArt from '../components/ScenarioArt.jsx';
 export default function ScreenView({ gameAPI }) {
   const station = useStation(gameAPI);
 
+  // Facilitator "Reset room" confirmation modal (Screen-only control).
+  const [confirmReset, setConfirmReset] = useState(false);
+
   const players = station ? station.players : [];
   const decisions = station ? station.decisions : [];
   const roomCode = station ? station.roomCode : gameAPI.getRoomCode();
+
+  function handleConfirmReset() {
+    // Fire-and-forget: the backend wipes the room and notifies subscribers, so
+    // the dashboard returns to 0 via the station update. Close the modal now.
+    gameAPI.resetRoom();
+    setConfirmReset(false);
+  }
 
   // Recompute over the raw arrays every render — useStation shallow-snapshots,
   // so decisions/players keep identity when the backend mutates in place.
@@ -82,6 +93,30 @@ export default function ScreenView({ gameAPI }) {
               Automate or Not? — Live Results
             </div>
           </div>
+
+          {/* Subtle facilitator control: reset the room before a fresh session.
+              Muted styling so it never dominates the projector. */}
+          <button
+            type="button"
+            data-testid="reset-room-button"
+            onClick={() => setConfirmReset(true)}
+            title="Reset room — clear all players and responses"
+            style={{
+              flexShrink: 0,
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.14)',
+              color: 'rgba(255,255,255,0.45)',
+              fontFamily: FONT,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              padding: '6px 12px',
+              borderRadius: 8,
+              cursor: 'pointer',
+            }}
+          >
+            ↺ Reset
+          </button>
         </div>
 
         {/* Live totals + optimal-rate teaching takeaway */}
@@ -269,6 +304,105 @@ export default function ScreenView({ gameAPI }) {
           <JoinQR roomCode={roomCode} size={180} />
         </div>
         <TeamStandings standings={standings} />
+      </div>
+
+      {confirmReset && (
+        <ResetConfirmModal
+          roomCode={roomCode}
+          playerCount={players.length}
+          responseCount={decisions.length}
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={handleConfirmReset}
+        />
+      )}
+    </div>
+  );
+}
+
+function ResetConfirmModal({ roomCode, playerCount, responseCount, onCancel, onConfirm }) {
+  return (
+    <div
+      data-testid="reset-confirm-modal"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(4,9,16,0.78)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        fontFamily: FONT,
+      }}
+    >
+      <div
+        // Stop backdrop clicks (which cancel) from bubbling out of the card.
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(460px, calc(100vw - 48px))',
+          background: '#0F1B2B',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 16,
+          padding: '28px 30px',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+          color: '#FFFFFF',
+        }}
+      >
+        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>
+          Reset room {roomCode}?
+        </div>
+        <div
+          style={{
+            fontSize: 15,
+            lineHeight: 1.5,
+            color: 'rgba(255,255,255,0.72)',
+            marginBottom: 24,
+          }}
+        >
+          {playerCount} player{playerCount === 1 ? '' : 's'} ·{' '}
+          {responseCount} response{responseCount === 1 ? '' : 's'} will be cleared.
+          This cannot be undone.
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button
+            type="button"
+            data-testid="reset-cancel-button"
+            onClick={onCancel}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.22)',
+              color: '#FFFFFF',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 600,
+              padding: '9px 18px',
+              borderRadius: 9,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-testid="reset-confirm-button"
+            onClick={onConfirm}
+            style={{
+              background: COLORS.red,
+              border: '1px solid transparent',
+              color: '#FFFFFF',
+              fontFamily: FONT,
+              fontSize: 14,
+              fontWeight: 700,
+              padding: '9px 18px',
+              borderRadius: 9,
+              cursor: 'pointer',
+            }}
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -63,6 +63,7 @@ const INTERFACE_METHODS = [
   'getStation',
   'destroy',
   'isSolo',
+  'resetRoom',
 ];
 
 beforeEach(() => {
@@ -342,6 +343,101 @@ describe('createSupabaseGameAPI — emit error handling', () => {
 
     await expect(api.emit('decision', DECISION_PAYLOAD)).resolves.toBeUndefined();
     expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+});
+
+// A stub that records which tables saw delete()/update() for resetRoom().
+// rooms lookup resolves to a real room so resetRoom() has a roomId to act on.
+function makeResetStub(record, { roomsUpdateErrors = false } = {}) {
+  const channel = {
+    on() { return channel; },
+    subscribe(cb) { if (cb) cb('SUBSCRIBED'); return channel; },
+    unsubscribe() { return Promise.resolve('ok'); },
+  };
+  const room = { id: 'room-1', code: 'DEMO', current_idx: 3, reveal: true, status: 'active' };
+  return {
+    from: vi.fn((table) => {
+      if (table === 'rooms') {
+        return {
+          select() { return this; },
+          eq() { return this; },
+          maybeSingle() { return Promise.resolve({ data: room, error: null }); },
+          update(patch) {
+            record.roomsUpdates.push(patch);
+            return { eq() { return Promise.resolve({ error: roomsUpdateErrors ? { message: 'boom' } : null }); } };
+          },
+          order() { return Promise.resolve({ data: [], error: null }); },
+        };
+      }
+      if (table === 'decisions') {
+        return {
+          delete() {
+            record.decisionsDeletes += 1;
+            return { eq() { return Promise.resolve({ error: null }); } };
+          },
+          select() { return this; },
+          eq() { return Promise.resolve({ data: [], error: null }); },
+        };
+      }
+      if (table === 'players') {
+        return {
+          delete() {
+            record.playersDeletes += 1;
+            return { eq() { return Promise.resolve({ error: null }); } };
+          },
+          select() { return this; },
+          eq() { return this; },
+          order() { return Promise.resolve({ data: [], error: null }); },
+        };
+      }
+      return { select() { return this; }, eq() { return this; } };
+    }),
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    channel: vi.fn(() => channel),
+    removeChannel: vi.fn(() => Promise.resolve('ok')),
+  };
+}
+
+describe('createSupabaseGameAPI — resetRoom (facilitator wipe)', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('resetRoom is an async function (returns a thenable)', () => {
+    const supabase = makeResetStub({ decisionsDeletes: 0, playersDeletes: 0, roomsUpdates: [] });
+    const api = createSupabaseGameAPI({ view: 'screen', roomCode: 'DEMO', supabase });
+    expect(typeof api.resetRoom).toBe('function');
+    const ret = api.resetRoom();
+    expect(typeof ret.then).toBe('function');
+    return ret;
+  });
+
+  it('deletes decisions and players for the room, then resets the rooms row', async () => {
+    const record = { decisionsDeletes: 0, playersDeletes: 0, roomsUpdates: [] };
+    const supabase = makeResetStub(record);
+    const api = createSupabaseGameAPI({ view: 'screen', roomCode: 'DEMO', supabase });
+    // Allow the construction-time refresh to settle so roomId is loaded.
+    await Promise.resolve();
+
+    await api.resetRoom();
+
+    // decisions and players were each deleted (decisions first to be safe).
+    expect(record.decisionsDeletes).toBeGreaterThan(0);
+    expect(record.playersDeletes).toBeGreaterThan(0);
+    // rooms row reset to lobby defaults.
+    const reset = record.roomsUpdates.find(
+      (u) => u.current_idx === 0 && u.reveal === false && u.status === 'lobby',
+    );
+    expect(reset).toBeTruthy();
+  });
+
+  it('resolves without throwing even when the rooms update errors', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const record = { decisionsDeletes: 0, playersDeletes: 0, roomsUpdates: [] };
+    const supabase = makeResetStub(record, { roomsUpdateErrors: true });
+    const api = createSupabaseGameAPI({ view: 'screen', roomCode: 'DEMO', supabase });
+    await Promise.resolve();
+
+    await expect(api.resetRoom()).resolves.toBeUndefined();
     errSpy.mockRestore();
   });
 });

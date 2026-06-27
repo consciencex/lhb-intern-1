@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, act, within } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, act, within, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ScreenView from './ScreenView.jsx';
 import { createMockGameAPI } from '../game/mockGameAPI.js';
@@ -161,5 +161,81 @@ describe('ScreenView — live all-scenarios dashboard (no reveal gating)', () =>
     expect(screen.getByTestId('total-players')).toHaveTextContent('1');
     expect(screen.getByTestId('total-responses')).toHaveTextContent('1');
     expect(screen.getByTestId('optimal-rate')).toHaveTextContent('100%');
+  });
+});
+
+describe('ScreenView — facilitator Reset room (confirm modal)', () => {
+  it('renders a Reset button in the header', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    expect(screen.getByTestId('reset-room-button')).toBeInTheDocument();
+  });
+
+  it('does NOT show the confirm modal until the Reset button is clicked', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    expect(screen.queryByTestId('reset-confirm-modal')).not.toBeInTheDocument();
+  });
+
+  it('clicking Reset opens a confirm modal showing the players + responses counts', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    fireEvent.click(screen.getByTestId('reset-room-button'));
+
+    const modal = screen.getByTestId('reset-confirm-modal');
+    expect(modal).toBeInTheDocument();
+    // Counts are read from the live station.
+    expect(within(modal).getByText(String(station.players.length), { exact: false })).toBeInTheDocument();
+    expect(within(modal).getByText(String(station.decisions.length), { exact: false })).toBeInTheDocument();
+    // Names the room being reset.
+    expect(within(modal).getByText(/DEMO/)).toBeInTheDocument();
+  });
+
+  it('Cancel closes the modal WITHOUT calling resetRoom', () => {
+    const gameAPI = seededScreen();
+    const spy = vi.spyOn(gameAPI, 'resetRoom');
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    fireEvent.click(screen.getByTestId('reset-room-button'));
+    expect(screen.getByTestId('reset-confirm-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('reset-cancel-button'));
+
+    expect(screen.queryByTestId('reset-confirm-modal')).not.toBeInTheDocument();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('Reset (confirm) calls gameAPI.resetRoom() once and closes the modal', async () => {
+    const gameAPI = seededScreen();
+    const spy = vi.spyOn(gameAPI, 'resetRoom');
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    fireEvent.click(screen.getByTestId('reset-room-button'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('reset-confirm-button'));
+    });
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('reset-confirm-modal')).not.toBeInTheDocument();
+  });
+
+  it('after confirming Reset the dashboard totals return to 0', async () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    render(<ScreenView gameAPI={gameAPI} />);
+    // Pre-condition: non-zero totals (seeded room).
+    expect(station.decisions.length).toBeGreaterThan(0);
+    expect(screen.getByTestId('total-responses')).toHaveTextContent(
+      String(station.decisions.length),
+    );
+
+    fireEvent.click(screen.getByTestId('reset-room-button'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('reset-confirm-button'));
+    });
+
+    expect(screen.getByTestId('total-players')).toHaveTextContent('0');
+    expect(screen.getByTestId('total-responses')).toHaveTextContent('0');
   });
 });

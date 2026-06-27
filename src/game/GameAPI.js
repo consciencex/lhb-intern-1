@@ -55,6 +55,11 @@ import { createSupabaseGameAPI } from './supabaseGameAPI.js';
  *           column stays populated; award() is not idempotent across replays.
  * @property {() => Promise<void>} advance      // host: currentIdx++ or status->'ended'
  * @property {(on: boolean) => Promise<void>} setReveal  // host: toggle aggregate reveal
+ * @property {() => Promise<void>} resetRoom
+ *           Facilitator wipe: clear all players + decisions for this room and
+ *           reset the room to { currentIdx:0, reveal:false, status:'lobby' }, so
+ *           the live dashboard returns to 0 before a fresh session. Resolves
+ *           (never throws); the backend notifies subscribers after the wipe.
  * @property {(cb: (station: Station) => void) => (() => void)} subscribe
  *           subscribe returns an unsubscribe function.
  * @property {() => Station} getStation

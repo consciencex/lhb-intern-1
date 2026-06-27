@@ -7,7 +7,11 @@ intro screen the player enters an optional name and **chooses one of four squads
 **live results dashboard**: every answer shows up instantly with per-scenario
 response breakdowns, an overall "chose the optimal approach" rate, and a
 **TEAM STANDINGS** panel that ranks the four squads by score (with player count
-and each squad's optimal %). Players read a banking work scenario (loan
+and each squad's optimal %). The facilitator running the Screen can **reset the
+room** before each session with the subtle **↺ Reset** button in the dashboard
+header (a confirmation modal guards it) — this clears all players and responses
+and returns the live dashboard to 0, no database access required. Players read a
+banking work scenario (loan
 approvals, AML monitoring, KYC, complaints, …), each shown with a clean flat
 illustration, pick one of three approaches —
 **Automate Fully / Human-in-Loop / Manual Review** — and immediately see the

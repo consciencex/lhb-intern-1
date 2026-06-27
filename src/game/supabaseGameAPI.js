@@ -300,6 +300,40 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     }
   }
 
+  async function resetRoom() {
+    // Facilitator wipe: clear all decisions then all players for this room, then
+    // reset the rooms row to the lobby defaults. decisions first to be safe even
+    // though the FK cascades. Wrapped in catch-log-resolve so a transient error
+    // never rejects (views call this fire-and-forget). The anon RLS permits
+    // delete (workshop-grade). Realtime DELETE/UPDATE events propagate to other
+    // clients; refresh() updates this local Station immediately.
+    try {
+      if (!roomId) await loadRoom();
+      if (!roomId) return; // room not loaded yet → no-op
+
+      const del1 = await supabase.from('decisions').delete().eq('room_id', roomId);
+      if (del1 && del1.error) {
+        console.error('[supabaseGameAPI] resetRoom delete decisions failed:', del1.error);
+      }
+      const del2 = await supabase.from('players').delete().eq('room_id', roomId);
+      if (del2 && del2.error) {
+        console.error('[supabaseGameAPI] resetRoom delete players failed:', del2.error);
+      }
+      const upd = await supabase
+        .from('rooms')
+        .update({ current_idx: 0, reveal: false, status: 'lobby' })
+        .eq('id', roomId);
+      if (upd && upd.error) {
+        console.error('[supabaseGameAPI] resetRoom reset rooms row failed:', upd.error);
+      }
+    } catch (err) {
+      console.error('[supabaseGameAPI] resetRoom threw:', err);
+    }
+    // Pull the now-empty room into the local Station so the Screen updates even
+    // before the realtime DELETE/UPDATE events arrive.
+    await refresh();
+  }
+
   function subscribe(cb) {
     listeners.add(cb);
     // Push the current snapshot immediately so new subscribers aren't blank.
@@ -332,6 +366,7 @@ export function createSupabaseGameAPI({ view, roomCode, supabase }) {
     award,
     advance,
     setReveal,
+    resetRoom,
     subscribe,
     getStation,
     destroy,

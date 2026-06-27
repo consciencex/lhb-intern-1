@@ -221,3 +221,61 @@ describe('createMockGameAPI — seed', () => {
     expect(ca).toEqual(cbChoices);
   });
 });
+
+describe('createMockGameAPI — resetRoom (facilitator wipe)', () => {
+  it('clears players + decisions, resets currentIdx/reveal/status, and recomputes respondedCount', async () => {
+    const api = createMockGameAPI({ seed: true });
+    // Pre-condition: the seeded room has live data.
+    let s = api.getStation();
+    expect(s.players.length).toBeGreaterThan(0);
+    expect(s.decisions.length).toBeGreaterThan(0);
+
+    // Advance + reveal so we can prove reset returns these to defaults too.
+    await api.advance();
+    await api.setReveal(true);
+    expect(api.getStation().currentIdx).toBe(1);
+    expect(api.getStation().reveal).toBe(true);
+
+    await api.resetRoom();
+
+    s = api.getStation();
+    expect(s.players).toEqual([]);
+    expect(s.decisions).toEqual([]);
+    expect(s.respondedCount).toBe(0);
+    expect(s.currentIdx).toBe(0);
+    expect(s.reveal).toBe(false);
+    expect(s.status).toBe('lobby');
+  });
+
+  it('also clears a non-seeded room built up via joinRoom/emit', async () => {
+    const api = createMockGameAPI({});
+    const { playerId } = await api.joinRoom({ name: 'Dana' });
+    await api.emit('decision', { playerId, scenarioId: 'loan', scenarioIdx: 0, choice: 'hitl', isBest: true, breach: false });
+    expect(api.getStation().players).toHaveLength(1);
+    expect(api.getStation().decisions).toHaveLength(1);
+
+    await api.resetRoom();
+
+    const s = api.getStation();
+    expect(s.players).toEqual([]);
+    expect(s.decisions).toEqual([]);
+    expect(s.respondedCount).toBe(0);
+  });
+
+  it('notifies subscribers so the live dashboard updates', async () => {
+    const api = createMockGameAPI({ seed: true });
+    const cb = vi.fn();
+    api.subscribe(cb);
+    await api.resetRoom();
+    expect(cb).toHaveBeenCalled();
+    // Subscribers receive the wiped station.
+    const stationArg = cb.mock.calls[cb.mock.calls.length - 1][0];
+    expect(stationArg.players).toEqual([]);
+    expect(stationArg.decisions).toEqual([]);
+  });
+
+  it('returns a resolved Promise', async () => {
+    const api = createMockGameAPI({ seed: true });
+    await expect(api.resetRoom()).resolves.toBeUndefined();
+  });
+});

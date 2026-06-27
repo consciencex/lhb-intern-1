@@ -114,6 +114,19 @@ export function createMockGameAPI({ view = 'play', roomCode = 'DEMO', seed = fal
       notify();
       return Promise.resolve();
     },
+    resetRoom() {
+      // Facilitator wipe: clear everyone + every decision and return the room
+      // to its initial lobby state. notify() recomputes respondedCount (→ 0,
+      // since there are no decisions) and pushes the wiped station to the live
+      // dashboard. Deterministic; no Math.random.
+      station.players = [];
+      station.decisions = [];
+      station.currentIdx = 0;
+      station.reveal = false;
+      station.status = 'lobby';
+      notify();
+      return Promise.resolve();
+    },
     subscribe(cb) {
       subscribers.add(cb);
       return function unsubscribe() {

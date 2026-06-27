@@ -28,6 +28,14 @@ optimal answer), and the **TEAM STANDINGS** panel (each squad's score, player
 count and optimal %).
 Everything is visible from the start and updates in real time as answers arrive.
 
+**Reset the room (facilitator).** The person running the Screen can wipe the room
+before each real session — no DB access needed. Click the subtle **↺ Reset**
+button in the dashboard header; an in-app confirmation modal shows how many
+players and responses will be cleared and asks you to confirm. Confirming clears
+all players and decisions for the room and returns the live dashboard (totals,
+per-scenario bars, team standings) to 0; connected phones see the wipe via
+realtime. Cancel leaves everything untouched.
+
 Two URL-selected views share one app:
 
 | View    | Who           | URL param      |
