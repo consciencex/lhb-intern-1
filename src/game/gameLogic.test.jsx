@@ -14,6 +14,8 @@ import {
   isRoomSplit,
   buildScoreboard,
   teamStandings,
+  accumulateMeters,
+  teamMeters,
 } from './gameLogic';
 import { COLORS } from '../theme';
 
@@ -480,7 +482,7 @@ describe('teamStandings', () => {
     expect(teamStandings([], decisions)).toEqual([]);
   });
 
-  it('aggregates one row per team: player count, derived score, response count, optimalRate', () => {
+  it('aggregates one row per team: player count, AVERAGE score per player, response count, optimalRate', () => {
     const players = [
       // Player .score columns are intentionally NOT multiples of the derived
       // score below; teamStandings must derive score from decisions, not these.
@@ -499,19 +501,21 @@ describe('teamStandings', () => {
     const alpha = rows.find((r) => r.team === 'Team Alpha');
     const beta = rows.find((r) => r.team === 'Team Beta');
 
-    // Alpha: 2 is_best decisions -> score 2 * POINTS_PER_BEST = 20.
+    // Alpha: 2 is_best decisions across 2 players -> avg per player
+    // round(2 * POINTS_PER_BEST / 2) = round(20 / 2) = 10.
     expect(alpha).toEqual({
       team: 'Team Alpha',
       players: 2,
-      score: 2 * POINTS_PER_BEST,
+      score: Math.round((2 * POINTS_PER_BEST) / 2),
       responses: 3,
       optimalRate: 2 / 3,
     });
-    // Beta: 2 is_best decisions -> score 2 * POINTS_PER_BEST = 20.
+    // Beta: 2 is_best decisions across 1 player -> avg per player
+    // round(2 * POINTS_PER_BEST / 1) = round(20 / 1) = 20.
     expect(beta).toEqual({
       team: 'Team Beta',
       players: 1,
-      score: 2 * POINTS_PER_BEST,
+      score: Math.round((2 * POINTS_PER_BEST) / 1),
       responses: 2,
       optimalRate: 1,
     });
@@ -526,27 +530,27 @@ describe('teamStandings', () => {
     const decisions = [{ playerId: 'a', scenarioIdx: 0, isBest: true }];
     const rows = teamStandings(players, decisions);
     expect(rows).toHaveLength(1);
-    expect(rows[0].score).toBe(1 * POINTS_PER_BEST); // 10, not the inflated 30
+    // Single-player team: avg per player = round(1 * 10 / 1) = 10, not the
+    // inflated 30 from the players.score column.
+    expect(rows[0].score).toBe(Math.round((1 * POINTS_PER_BEST) / 1)); // 10
     expect(rows[0].responses).toBe(1);
     expect(rows[0].optimalRate).toBe(1);
-    // score == (optimal answers) * POINTS_PER_BEST, consistent with optimalRate.
-    expect(rows[0].score).toBe(rows[0].responses * rows[0].optimalRate * POINTS_PER_BEST);
   });
 
-  it('sorts by derived score desc (score = is_best count * POINTS_PER_BEST)', () => {
+  it('sorts by AVERAGE-per-player score desc (each team here has 1 player)', () => {
     const players = [
       { id: 'a', team: 'Team Alpha' },
       { id: 'b', team: 'Team Beta' },
       { id: 'c', team: 'Team Gamma' },
     ];
     const decisions = [
-      // Alpha: 1 best -> score 10
+      // Alpha: 1 best / 1 player -> avg 10
       { playerId: 'a', isBest: true },
-      // Beta: 3 best -> score 30 (highest)
+      // Beta: 3 best / 1 player -> avg 30 (highest)
       { playerId: 'b', isBest: true },
       { playerId: 'b', isBest: true },
       { playerId: 'b', isBest: true },
-      // Gamma: 2 best -> score 20
+      // Gamma: 2 best / 1 player -> avg 20
       { playerId: 'c', isBest: true },
       { playerId: 'c', isBest: true },
     ];
@@ -556,6 +560,57 @@ describe('teamStandings', () => {
       'Team Gamma',
       'Team Alpha',
     ]);
+  });
+
+  it('score is the AVERAGE points per player (fair across team sizes)', () => {
+    const players = [
+      // Team Alpha: 4 players
+      { id: 'a1', team: 'Team Alpha' },
+      { id: 'a2', team: 'Team Alpha' },
+      { id: 'a3', team: 'Team Alpha' },
+      { id: 'a4', team: 'Team Alpha' },
+    ];
+    // 3 optimal decisions across the 4 players -> 3 * 10 / 4 = 7.5 -> round 8.
+    const decisions = [
+      { playerId: 'a1', isBest: true },
+      { playerId: 'a2', isBest: true },
+      { playerId: 'a3', isBest: true },
+      { playerId: 'a4', isBest: false },
+    ];
+    const rows = teamStandings(players, decisions);
+    expect(rows[0].players).toBe(4);
+    expect(rows[0].score).toBe(8); // round(30 / 4)
+  });
+
+  it('two teams with the same TOTAL but different sizes: the smaller team ranks higher', () => {
+    const players = [
+      // Big team: 4 players, 4 optimal decisions -> total 40, avg round(40/4)=10
+      { id: 'b1', team: 'Team Big' },
+      { id: 'b2', team: 'Team Big' },
+      { id: 'b3', team: 'Team Big' },
+      { id: 'b4', team: 'Team Big' },
+      // Small team: 2 players, 4 optimal decisions -> total 40, avg round(40/2)=20
+      { id: 's1', team: 'Team Small' },
+      { id: 's2', team: 'Team Small' },
+    ];
+    const decisions = [
+      { playerId: 'b1', isBest: true },
+      { playerId: 'b2', isBest: true },
+      { playerId: 'b3', isBest: true },
+      { playerId: 'b4', isBest: true },
+      { playerId: 's1', isBest: true },
+      { playerId: 's1', isBest: true },
+      { playerId: 's2', isBest: true },
+      { playerId: 's2', isBest: true },
+    ];
+    const rows = teamStandings(players, decisions);
+    const big = rows.find((r) => r.team === 'Team Big');
+    const small = rows.find((r) => r.team === 'Team Small');
+    // Same raw total (40), but per-player average differs.
+    expect(big.score).toBe(10);
+    expect(small.score).toBe(20);
+    // The smaller team with the same total ranks higher (sorted first).
+    expect(rows[0].team).toBe('Team Small');
   });
 
   it('breaks score ties by optimalRate desc', () => {
@@ -616,5 +671,189 @@ describe('teamStandings', () => {
     ];
     const rows = teamStandings(players, []);
     expect(rows.map((r) => r.team)).toEqual(['Team Alpha']);
+  });
+});
+
+describe('accumulateMeters', () => {
+  // A deterministic 2-scenario fixture. Scenario 0 pushes every meter UP hard
+  // (so it clamps at 100), scenario 1 pulls every meter DOWN. The order in which
+  // they apply changes the clamped result, which is what these tests pin down.
+  const fixture = [
+    { choices: { up: { eff: 60, acc: 60, risk: 60, comp: 60 } } },
+    { choices: { down: { eff: -30, acc: -30, risk: -30, comp: -30 } } },
+  ];
+
+  it('starts from START_METERS (50s) and returns them unchanged for no decisions', () => {
+    expect(accumulateMeters([], fixture)).toEqual(START_METERS);
+    // Must be a fresh object, not the shared START_METERS reference.
+    expect(accumulateMeters([], fixture)).not.toBe(START_METERS);
+  });
+
+  it('applies choice deltas in ASCENDING scenarioIdx order, clamping each step', () => {
+    // Provided OUT of order; accumulateMeters must sort by scenarioIdx.
+    // Order 0 then 1: 50 +60 ->100 (clamp), then -30 -> 70 for every meter.
+    const decisions = [
+      { scenarioIdx: 1, choice: 'down' },
+      { scenarioIdx: 0, choice: 'up' },
+    ];
+    expect(accumulateMeters(decisions, fixture)).toEqual({
+      eff: 70, acc: 70, risk: 70, comp: 70,
+    });
+  });
+
+  it('order matters: the reverse sequence clamps to a different result', () => {
+    // If 1 applied before 0: 50 -30 ->20, then +60 ->80. The function always
+    // sorts ascending, so this is what a [0]=down,[1]=up fixture would yield —
+    // here we prove the ascending sort by swapping the fixture's deltas.
+    const reversed = [
+      { choices: { down: { eff: -30, acc: -30, risk: -30, comp: -30 } } },
+      { choices: { up: { eff: 60, acc: 60, risk: 60, comp: 60 } } },
+    ];
+    const decisions = [
+      { scenarioIdx: 1, choice: 'up' },
+      { scenarioIdx: 0, choice: 'down' },
+    ];
+    // 50 -30 ->20 (idx0), then +60 ->80 (idx1).
+    expect(accumulateMeters(decisions, reversed)).toEqual({
+      eff: 80, acc: 80, risk: 80, comp: 80,
+    });
+  });
+
+  it('ignores a decision whose scenario index is out of range', () => {
+    const decisions = [
+      { scenarioIdx: 0, choice: 'up' },
+      { scenarioIdx: 99, choice: 'up' }, // no such scenario
+    ];
+    // Only idx0 applies: 50 +60 -> 100 (clamped).
+    expect(accumulateMeters(decisions, fixture)).toEqual({
+      eff: 100, acc: 100, risk: 100, comp: 100,
+    });
+  });
+
+  it('ignores a decision whose choice key does not exist on the scenario', () => {
+    const decisions = [
+      { scenarioIdx: 0, choice: 'up' },
+      { scenarioIdx: 1, choice: 'nonexistent' }, // unknown choice
+    ];
+    // idx0 applies (-> 100), idx1's unknown choice is skipped -> stays 100.
+    expect(accumulateMeters(decisions, fixture)).toEqual({
+      eff: 100, acc: 100, risk: 100, comp: 100,
+    });
+  });
+
+  it('does not mutate START_METERS', () => {
+    accumulateMeters([{ scenarioIdx: 0, choice: 'up' }], fixture);
+    expect(START_METERS).toEqual({ eff: 50, acc: 50, risk: 50, comp: 50 });
+  });
+});
+
+describe('teamMeters', () => {
+  // Reuse a fixture whose deltas are easy to reason about per player.
+  const fixture = [
+    { choices: { a: { eff: 20, acc: 0, risk: 0, comp: 0 } } },   // idx 0
+    { choices: { b: { eff: 0, acc: 10, risk: 0, comp: 0 } } },   // idx 1
+  ];
+
+  it('returns [] for empty players', () => {
+    expect(teamMeters([], [], fixture)).toEqual([]);
+  });
+
+  it('averages each answering member\'s accumulated meters, rounded', () => {
+    const players = [
+      { id: 'p1', team: 'Team Alpha' },
+      { id: 'p2', team: 'Team Alpha' },
+    ];
+    const decisions = [
+      // p1 answers idx0 (a): eff 50 +20 = 70; others 50.
+      { playerId: 'p1', scenarioIdx: 0, choice: 'a' },
+      // p2 answers idx1 (b): acc 50 +10 = 60; others 50.
+      { playerId: 'p2', scenarioIdx: 1, choice: 'b' },
+    ];
+    const rows = teamMeters(players, decisions, fixture);
+    expect(rows).toHaveLength(1);
+    // p1 = {eff:70, acc:50, risk:50, comp:50}; p2 = {eff:50, acc:60, risk:50, comp:50}
+    // average: eff (70+50)/2=60, acc (50+60)/2=55, risk 50, comp 50
+    expect(rows[0]).toEqual({
+      team: 'Team Alpha',
+      players: 2,
+      answered: 2,
+      meters: { eff: 60, acc: 55, risk: 50, comp: 50 },
+    });
+  });
+
+  it('rounds the averaged metrics to integers', () => {
+    const players = [
+      { id: 'p1', team: 'Team Alpha' },
+      { id: 'p2', team: 'Team Alpha' },
+      { id: 'p3', team: 'Team Alpha' },
+    ];
+    // Only p1 raises eff by 20 -> 70; p2, p3 answer with no-op-ish deltas.
+    // eff values: 70, 50, 50 -> avg 170/3 = 56.67 -> round 57.
+    const decisions = [
+      { playerId: 'p1', scenarioIdx: 0, choice: 'a' },
+      { playerId: 'p2', scenarioIdx: 1, choice: 'b' }, // acc 50->60
+      { playerId: 'p3', scenarioIdx: 1, choice: 'b' }, // acc 50->60
+    ];
+    const rows = teamMeters(players, decisions, fixture);
+    // eff: (70+50+50)/3 = 56.67 -> 57; acc: (50+60+60)/3 = 56.67 -> 57
+    expect(rows[0].meters.eff).toBe(57);
+    expect(rows[0].meters.acc).toBe(57);
+  });
+
+  it('averages only over members who answered (answered < players)', () => {
+    const players = [
+      { id: 'p1', team: 'Team Alpha' },
+      { id: 'p2', team: 'Team Alpha' }, // never answers
+    ];
+    const decisions = [
+      { playerId: 'p1', scenarioIdx: 0, choice: 'a' }, // eff -> 70
+    ];
+    const rows = teamMeters(players, decisions, fixture);
+    expect(rows[0].players).toBe(2);
+    expect(rows[0].answered).toBe(1);
+    // Average over the 1 answering member only: eff 70, rest 50.
+    expect(rows[0].meters).toEqual({ eff: 70, acc: 50, risk: 50, comp: 50 });
+  });
+
+  it('uses START_METERS (50s) for a team with players but no answers', () => {
+    const players = [
+      { id: 'p1', team: 'Team Alpha' },
+      { id: 'p2', team: 'Team Alpha' },
+    ];
+    const rows = teamMeters(players, [], fixture);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({
+      team: 'Team Alpha',
+      players: 2,
+      answered: 0,
+      meters: { eff: 50, acc: 50, risk: 50, comp: 50 },
+    });
+  });
+
+  it('excludes teams with zero players (and players with no team)', () => {
+    const players = [
+      { id: 'p1', team: 'Team Alpha' },
+      { id: 'p2' }, // no team -> contributes no team row
+    ];
+    const decisions = [
+      // A decision by a non-roster player must not invent a team.
+      { playerId: 'ghost', scenarioIdx: 0, choice: 'a' },
+    ];
+    const rows = teamMeters(players, decisions, fixture);
+    expect(rows.map((r) => r.team)).toEqual(['Team Alpha']);
+  });
+
+  it('emits one row per team, matching the teamStandings team set', () => {
+    const players = [
+      { id: 'a', team: 'Team Alpha' },
+      { id: 'b', team: 'Team Beta' },
+    ];
+    const decisions = [
+      { playerId: 'a', scenarioIdx: 0, choice: 'a' },
+      { playerId: 'b', scenarioIdx: 1, choice: 'b' },
+    ];
+    const meterTeams = teamMeters(players, decisions, fixture).map((r) => r.team).sort();
+    const standingTeams = teamStandings(players, decisions).map((r) => r.team).sort();
+    expect(meterTeams).toEqual(standingTeams);
   });
 });

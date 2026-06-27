@@ -5,11 +5,14 @@ import {
   aggregateByScenario,
   optimalRate,
   teamStandings,
+  teamMeters,
 } from '../game/gameLogic.js';
 import { useStation } from '../hooks/useStation.js';
 import TeamStandings from '../components/TeamStandings.jsx';
 import JoinQR from '../components/JoinQR.jsx';
 import ScenarioArt from '../components/ScenarioArt.jsx';
+import RadarChart from '../components/RadarChart.jsx';
+import { TEAMS } from '../content/teams.js';
 
 /**
  * Live, real-time results dashboard for the projector. Everything is always
@@ -40,6 +43,9 @@ export default function ScreenView({ gameAPI }) {
   // so decisions/players keep identity when the backend mutates in place.
   const perScenario = aggregateByScenario(decisions, SCENARIOS.length);
   const standings = teamStandings(players, decisions);
+  // Per-team AVERAGE meter profile, derived from decisions (no identity-memo —
+  // recompute every render per useStation's shallow-snapshot contract).
+  const profiles = teamMeters(players, decisions, SCENARIOS);
   const optimalPct = Math.round(optimalRate(decisions) * 100);
 
   return (
@@ -296,6 +302,36 @@ export default function ScreenView({ gameAPI }) {
             );
           })}
         </div>
+
+        {/* TEAM PROFILES: each team's AVERAGE decision profile as a dark radar.
+            Recomputed every render (no identity-memo) per useStation's
+            shallow-snapshot contract. Up to 4 radars laid out as a clean row. */}
+        {profiles.length > 0 && (
+          <div style={{ marginTop: 40 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#93C5FD',
+                letterSpacing: '0.15em',
+                marginBottom: 18,
+              }}
+            >
+              TEAM PROFILES
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 16,
+              }}
+            >
+              {profiles.map((row) => (
+                <TeamProfileCard key={row.team} row={row} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SIDEBAR: QR + scoreboard */}
@@ -403,6 +439,82 @@ function ResetConfirmModal({ roomCode, playerCount, responseCount, onCancel, onC
             Reset
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Resolve a squad's accent color from its display name. Tolerant of both the
+// full name ('Team Alpha') and the bare squad word ('Alpha') so the seeded demo
+// (bare names) and live play (full names) both get the right accent. Mirrors the
+// helper in TeamStandings so the profile accent matches the standings accent.
+function teamColor(name) {
+  const t = TEAMS.find(
+    (x) =>
+      x.name === name ||
+      x.key.toLowerCase() === String(name).toLowerCase().replace(/^team\s+/i, ''),
+  );
+  return t ? t.color : COLORS.slate400;
+}
+
+// One team's AVERAGE decision profile, rendered as a compact dark radar with the
+// team name (in its accent color) and an "{answered}/{players} answered" caption.
+function TeamProfileCard({ row }) {
+  const color = teamColor(row.team);
+  return (
+    <div
+      data-testid="team-profile"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderTop: `3px solid ${color}`,
+        borderRadius: 14,
+        padding: '14px 16px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: 190,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          alignSelf: 'flex-start',
+        }}
+      >
+        <span
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: 3,
+            background: color,
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#E2E8F0',
+          }}
+        >
+          {row.team}
+        </span>
+      </div>
+      <RadarChart metrics={row.meters} size={150} dark />
+      <div
+        style={{
+          fontSize: 10.5,
+          fontWeight: 600,
+          color: '#64748B',
+          letterSpacing: '0.04em',
+          alignSelf: 'flex-start',
+          marginTop: 2,
+        }}
+      >
+        {row.answered}/{row.players} answered
       </div>
     </div>
   );

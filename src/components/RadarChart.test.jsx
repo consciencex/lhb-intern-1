@@ -106,4 +106,57 @@ describe('RadarChart', () => {
     expect(svg.getAttribute('width')).toBe('260');
     expect(svg.getAttribute('height')).toBe('260');
   });
+
+  // The light variant (player view, white card) is the default and must keep
+  // using the opaque light-card grid color.
+  it('defaults to the light variant: grid rings stroked in COLORS.border', () => {
+    const { container } = render(<RadarChart metrics={metrics} />);
+    const ring = container.querySelector('polygon:not([data-testid="radar-polygon"])');
+    expect(ring.getAttribute('stroke')).toBe(COLORS.border);
+  });
+});
+
+describe('RadarChart — dark variant (projector)', () => {
+  const metrics = { eff: 70, acc: 60, risk: 40, comp: 80 };
+
+  it('strokes grid rings and spokes in a translucent light color (not COLORS.border)', () => {
+    const { container } = render(<RadarChart metrics={metrics} dark />);
+    const rings = container.querySelectorAll('polygon:not([data-testid="radar-polygon"])');
+    expect(rings.length).toBeGreaterThan(0);
+    rings.forEach((ring) => {
+      const stroke = ring.getAttribute('stroke');
+      expect(stroke).not.toBe(COLORS.border);
+      // A translucent white grid is legible on the dark projector.
+      expect(stroke).toMatch(/rgba\(255\s*,\s*255\s*,\s*255/);
+    });
+    const spoke = container.querySelector('line');
+    expect(spoke.getAttribute('stroke')).toMatch(/rgba\(255\s*,\s*255\s*,\s*255/);
+  });
+
+  it('keeps the data polygon in brand blue (unchanged from light)', () => {
+    const { container } = render(<RadarChart metrics={metrics} dark />);
+    const poly = container.querySelector('[data-testid="radar-polygon"]');
+    expect(poly.getAttribute('stroke')).toBe(COLORS.blue);
+  });
+
+  it('renders all four axis labels in the dark variant too', () => {
+    render(<RadarChart metrics={metrics} dark />);
+    expect(screen.getByText('Efficiency')).toBeInTheDocument();
+    expect(screen.getByText('Accuracy')).toBeInTheDocument();
+    expect(screen.getByText('Risk')).toBeInTheDocument();
+    expect(screen.getByText('Compliance')).toBeInTheDocument();
+  });
+
+  it('renders axis labels in a light color for the dark background', () => {
+    render(<RadarChart metrics={metrics} dark />);
+    const label = screen.getByText('Efficiency');
+    // Light label, distinctly not the light-card slate label color.
+    expect(label).not.toHaveStyle({ fill: COLORS.slate500 });
+  });
+
+  it('still shows the four metric values (colored via meterColor)', () => {
+    render(<RadarChart metrics={{ eff: 70, acc: 60, risk: 80, comp: 30 }} dark />);
+    expect(screen.getByTestId('radar-value-eff')).toHaveStyle({ color: COLORS.green });
+    expect(screen.getByTestId('radar-value-risk')).toHaveStyle({ color: COLORS.red });
+  });
 });

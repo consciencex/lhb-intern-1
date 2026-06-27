@@ -5,7 +5,7 @@ import ScreenView from './ScreenView.jsx';
 import { createMockGameAPI } from '../game/mockGameAPI.js';
 import { SCENARIOS } from '../content/scenarios.js';
 import { CHOICE_LABELS } from '../content/scenarios.js';
-import { optimalRate, teamStandings } from '../game/gameLogic.js';
+import { optimalRate, teamStandings, teamMeters } from '../game/gameLogic.js';
 
 afterEach(cleanup);
 
@@ -161,6 +161,83 @@ describe('ScreenView — live all-scenarios dashboard (no reveal gating)', () =>
     expect(screen.getByTestId('total-players')).toHaveTextContent('1');
     expect(screen.getByTestId('total-responses')).toHaveTextContent('1');
     expect(screen.getByTestId('optimal-rate')).toHaveTextContent('100%');
+  });
+});
+
+describe('ScreenView — TEAM PROFILES (per-team average radar)', () => {
+  it('renders a TEAM PROFILES section heading', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    expect(screen.getByText(/TEAM PROFILES/i)).toBeInTheDocument();
+  });
+
+  it('renders one team-profile radar per team from real station data', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    const rows = teamMeters(station.players, station.decisions, SCENARIOS);
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    const cards = screen.getAllByTestId('team-profile');
+    expect(cards).toHaveLength(rows.length);
+    expect(rows.length).toBeGreaterThan(1); // seeded demo spans 4 squads
+  });
+
+  it('labels each team-profile radar with the team name', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    const rows = teamMeters(station.players, station.decisions, SCENARIOS);
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    const cards = screen.getAllByTestId('team-profile');
+    rows.forEach((row, i) => {
+      expect(within(cards[i]).getByText(row.team)).toBeInTheDocument();
+    });
+  });
+
+  it('shows an "{answered}/{players} answered" caption per team', () => {
+    const gameAPI = seededScreen();
+    const station = gameAPI.getStation();
+    const rows = teamMeters(station.players, station.decisions, SCENARIOS);
+    render(<ScreenView gameAPI={gameAPI} />);
+
+    const cards = screen.getAllByTestId('team-profile');
+    rows.forEach((row, i) => {
+      expect(
+        within(cards[i]).getByText(`${row.answered}/${row.players} answered`),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('renders each team radar as an <svg> (the average meter profile)', () => {
+    render(<ScreenView gameAPI={seededScreen()} />);
+    const cards = screen.getAllByTestId('team-profile');
+    cards.forEach((card) => {
+      expect(card.querySelector('svg')).not.toBeNull();
+    });
+  });
+
+  it('uses the dark radar variant (translucent grid) for the projector', () => {
+    const { container } = render(<ScreenView gameAPI={seededScreen()} />);
+    const card = screen.getAllByTestId('team-profile')[0];
+    // Dark variant strokes its grid rings in translucent white.
+    const ring = card.querySelector('polygon:not([data-testid="radar-polygon"])');
+    expect(ring.getAttribute('stroke')).toMatch(/rgba\(255\s*,\s*255\s*,\s*255/);
+    expect(container).toBeTruthy();
+  });
+
+  it('still renders team profiles when a team has players but no answers', () => {
+    // A fresh (unseeded) room: join two players to the same squad, no decisions.
+    const gameAPI = createMockGameAPI({ view: 'screen', roomCode: 'DEMO', seed: false });
+    return act(async () => {
+      await gameAPI.joinRoom({ name: 'Ana', team: 'Team Alpha' });
+      await gameAPI.joinRoom({ name: 'Bo', team: 'Team Alpha' });
+    }).then(() => {
+      render(<ScreenView gameAPI={gameAPI} />);
+      const cards = screen.getAllByTestId('team-profile');
+      expect(cards).toHaveLength(1);
+      // No answers yet -> 0/2 answered, radar still renders (START_METERS).
+      expect(within(cards[0]).getByText('0/2 answered')).toBeInTheDocument();
+      expect(cards[0].querySelector('svg')).not.toBeNull();
+    });
   });
 });
 

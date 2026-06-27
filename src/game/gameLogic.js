@@ -153,12 +153,18 @@ export function isRoomSplit(agg) {
  * replay/re-answer and diverges from the decisions. Deriving score here keeps
  * score, responses, and optimalRate mutually consistent and replay-safe.
  *
+ * Score is the AVERAGE points per player (total is_best points / player count,
+ * rounded). This keeps the competition fair across team sizes: a bigger team no
+ * longer wins on headcount, and two teams with the same total are ranked by the
+ * smaller (higher per-player average) one.
+ *
  * @param {Array<{id:string, team?:string}>} players (score column intentionally unused)
  * @param {Array<{playerId:string, isBest:boolean}>} decisions
  * @returns {Array<{team:string, players:number, score:number, responses:number, optimalRate:number}>}
  *          One row per team that has >= 1 player, sorted by score desc then
- *          optimalRate desc. optimalRate is 0..1 over that team's decisions
- *          (0 when the team has no responses — no divide-by-zero).
+ *          optimalRate desc. score is the average points per player (rounded).
+ *          optimalRate is 0..1 over that team's decisions (0 when the team has
+ *          no responses — no divide-by-zero).
  */
 export function teamStandings(players, decisions) {
   // Build team rows from players only, so teams with zero players never appear
@@ -189,14 +195,123 @@ export function teamStandings(players, decisions) {
   const result = Array.from(rows.values()).map((r) => ({
     team: r.team,
     players: r.players,
-    // Derived from decisions (replay-safe), not the inflatable players.score.
-    score: r.best * POINTS_PER_BEST,
+    // Average points per player (rounded): fair across team sizes. Derived from
+    // decisions (replay-safe), not the inflatable players.score. r.players is
+    // always >= 1 here (rows are built from players), so the guard is defensive.
+    score: r.players > 0 ? Math.round((r.best * POINTS_PER_BEST) / r.players) : 0,
     responses: r.responses,
     optimalRate: r.responses === 0 ? 0 : r.best / r.responses,
   }));
 
   result.sort((a, b) => b.score - a.score || b.optimalRate - a.optimalRate);
   return result;
+}
+
+/**
+ * Replay one player's decisions into their accumulated 4-meter profile.
+ *
+ * Starts from START_METERS (50 each) and applies each decision's choice deltas
+ * IN ASCENDING scenarioIdx ORDER. Order matters because applyChoice clamps every
+ * step to 0..100, so a meter that saturates at 100 (or floors at 0) "forgets"
+ * later deltas in a way that depends on the sequence.
+ *
+ * Decisions whose scenario index or choice key can't be resolved against
+ * `scenarios` are skipped. Pure: never mutates inputs, returns a fresh object.
+ *
+ * @param {Array<{scenarioIdx:number, choice:string}>} playerDecisions
+ * @param {Array<{choices:Object}>} scenarios
+ * @returns {{eff:number, acc:number, risk:number, comp:number}}
+ */
+export function accumulateMeters(playerDecisions, scenarios) {
+  // Copy + sort ascending so we never mutate the caller's array and always
+  // replay in the order the meters were actually moved during play.
+  const ordered = [...playerDecisions].sort((a, b) => a.scenarioIdx - b.scenarioIdx);
+  let meters = { ...START_METERS };
+  for (const d of ordered) {
+    const scenario = scenarios[d.scenarioIdx];
+    if (!scenario || !scenario.choices) continue; // unresolved scenario
+    const deltas = scenario.choices[d.choice];
+    if (!deltas) continue; // unresolved choice
+    meters = applyChoice(meters, deltas);
+  }
+  return meters;
+}
+
+/**
+ * Per-team AVERAGE meter profile for the Screen, derived purely from decisions.
+ *
+ * For each team that has >= 1 player: take the members who answered >= 1
+ * scenario, replay each one's accumulateMeters, and average the 4 metrics across
+ * those answering members (rounded to integers). A team with players but no
+ * answers yet falls back to START_METERS (50s) so its radar still renders.
+ *
+ * One row per team in the same team set as teamStandings (teams with zero
+ * players, and players with no team, are excluded). Rows are ordered to match
+ * teamStandings (score desc) as a nicety so the Screen's radars line up with the
+ * standings.
+ *
+ * @param {Array<{id:string, team?:string}>} players
+ * @param {Array<{playerId:string, scenarioIdx:number, choice:string}>} decisions
+ * @param {Array<{choices:Object}>} scenarios
+ * @returns {Array<{team:string, players:number, answered:number, meters:{eff:number,acc:number,risk:number,comp:number}}>}
+ */
+export function teamMeters(players, decisions, scenarios) {
+  // Group players by team and route decisions to their player, preserving the
+  // same "team must have a player" rule as teamStandings.
+  const teams = new Map(); // team -> { team, playerIds:Set, byPlayer:Map<id, decisions[]> }
+  const playerTeam = new Map(); // playerId -> team
+  for (const p of players) {
+    if (!p.team) continue;
+    playerTeam.set(p.id, p.team);
+    const t = teams.get(p.team) || { team: p.team, playerIds: new Set(), byPlayer: new Map() };
+    t.playerIds.add(p.id);
+    teams.set(p.team, t);
+  }
+
+  for (const d of decisions) {
+    const team = playerTeam.get(d.playerId);
+    if (team === undefined) continue; // decision by a non-roster player
+    const t = teams.get(team);
+    const list = t.byPlayer.get(d.playerId) || [];
+    list.push(d);
+    t.byPlayer.set(d.playerId, list);
+  }
+
+  const rows = Array.from(teams.values()).map((t) => {
+    const answeringIds = Array.from(t.byPlayer.keys());
+    const answered = answeringIds.length;
+
+    let meters;
+    if (answered === 0) {
+      // Team has players but nobody answered yet — render a neutral baseline.
+      meters = { ...START_METERS };
+    } else {
+      const sum = { eff: 0, acc: 0, risk: 0, comp: 0 };
+      for (const id of answeringIds) {
+        const m = accumulateMeters(t.byPlayer.get(id), scenarios);
+        sum.eff += m.eff;
+        sum.acc += m.acc;
+        sum.risk += m.risk;
+        sum.comp += m.comp;
+      }
+      meters = {
+        eff: Math.round(sum.eff / answered),
+        acc: Math.round(sum.acc / answered),
+        risk: Math.round(sum.risk / answered),
+        comp: Math.round(sum.comp / answered),
+      };
+    }
+
+    return { team: t.team, players: t.playerIds.size, answered, meters };
+  });
+
+  // Order rows to match teamStandings (score desc) so the Screen's team radars
+  // line up with the standings panel. Nice-to-have, not relied on by callers.
+  const order = new Map(
+    teamStandings(players, decisions).map((s, i) => [s.team, i]),
+  );
+  rows.sort((a, b) => (order.get(a.team) ?? 0) - (order.get(b.team) ?? 0));
+  return rows;
 }
 
 export function buildScoreboard(players) {

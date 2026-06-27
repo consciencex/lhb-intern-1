@@ -77,16 +77,36 @@ export default function TeamStandings({ standings }) {
                 {row.team}
               </span>
               <span
-                data-testid="team-score"
                 style={{
-                  fontFamily: FONT,
-                  fontSize: 19,
-                  fontWeight: 800,
-                  color: '#FFFFFF',
-                  letterSpacing: '-0.5px',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 5,
                 }}
               >
-                {row.score}
+                <span
+                  data-testid="team-score"
+                  style={{
+                    fontFamily: FONT,
+                    fontSize: 19,
+                    fontWeight: 800,
+                    color: '#FFFFFF',
+                    letterSpacing: '-0.5px',
+                  }}
+                >
+                  {row.score}
+                </span>
+                <span
+                  style={{
+                    fontFamily: FONT,
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  avg pts/player
+                </span>
               </span>
             </div>
             <div

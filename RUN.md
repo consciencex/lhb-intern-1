@@ -24,8 +24,16 @@ joined, total responses, and the overall **"chose the optimal approach" rate** �
 the teaching takeaway), a compact **live card for every one of the six
 scenarios** (each with a flat scenario illustration, response breakdown bars for
 Automate / Human-in-Loop / Manual, the response count, and a ★ marker on the
-optimal answer), and the **TEAM STANDINGS** panel (each squad's score, player
-count and optimal %).
+optimal answer), the **TEAM STANDINGS** panel (each squad's score, player
+count and optimal %), and a **TEAM PROFILES** row of radar charts.
+**Team score is the AVERAGE points per player** (total optimal-answer points ÷
+squad size, rounded) so the competition is **fair across team sizes** — a bigger
+squad no longer wins on headcount, and two squads with the same total are ranked
+by the smaller (higher per-player average) one. **TEAM PROFILES** shows each
+squad's **average decision profile** as a compact 4-axis radar
+(**Efficiency / Accuracy / Risk / Compliance**): every member's accumulated
+meters are derived by replaying their decisions and then averaged across the
+members who have answered, with an "{answered}/{players} answered" caption.
 Everything is visible from the start and updates in real time as answers arrive.
 
 **Reset the room (facilitator).** The person running the Screen can wipe the room
@@ -241,7 +249,11 @@ players drive themselves.
    approach" rate** recomputes. The ★ marker on each card always points at the
    optimal answer so viewers learn where AI belongs. The **TEAM STANDINGS** panel
    ranks the four **squads** (Team Alpha / Beta / Gamma / Delta) — each player
-   chose their own squad at join — by score, with player count and optimal %.
+   chose their own squad at join — by **average points per player** (fair across
+   squad sizes), with player count and optimal %. Below the scenarios, the
+   **TEAM PROFILES** row shows each squad's **average decision profile** as a
+   compact radar (Efficiency / Accuracy / Risk / Compliance) with an
+   "{answered}/{players} answered" caption.
 
 4. **Breach card appears on a bad high-risk pick.**
    On a phone, advance to a **high-risk** scenario (e.g. **Suspicious Transaction

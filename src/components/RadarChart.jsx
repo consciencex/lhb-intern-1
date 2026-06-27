@@ -27,7 +27,29 @@ function fmt(n) {
   return Math.round(n * 100) / 100;
 }
 
-export default function RadarChart({ metrics, size = 200 }) {
+// Palette per variant. The light variant (default) is unchanged — opaque slate
+// grid + labels for the white player-view card. The dark variant uses
+// translucent-white grid/spokes and light labels so the radar reads on the dark
+// projector. The blue data polygon and meterColor-driven values are shared.
+const PALETTE = {
+  light: {
+    grid: COLORS.border,
+    spoke: COLORS.border,
+    label: COLORS.slate500,
+    hint: COLORS.slate400,
+    dot: COLORS.white,
+  },
+  dark: {
+    grid: 'rgba(255,255,255,0.14)',
+    spoke: 'rgba(255,255,255,0.22)',
+    label: '#CBD5E1',
+    hint: '#64748B',
+    dot: COLORS.white,
+  },
+};
+
+export default function RadarChart({ metrics, size = 200, dark = false }) {
+  const palette = dark ? PALETTE.dark : PALETTE.light;
   const cx = size / 2;
   const cy = size / 2;
   // Leave room around the chart for the axis labels + values.
@@ -67,7 +89,7 @@ export default function RadarChart({ metrics, size = 200 }) {
               key={`ring-${level}`}
               points={ringPts}
               fill="none"
-              stroke={COLORS.border}
+              stroke={palette.grid}
               strokeWidth={1}
             />
           );
@@ -83,7 +105,7 @@ export default function RadarChart({ metrics, size = 200 }) {
               y1={cy}
               x2={fmt(x)}
               y2={fmt(y)}
-              stroke={COLORS.border}
+              stroke={palette.spoke}
               strokeWidth={1}
             />
           );
@@ -107,7 +129,7 @@ export default function RadarChart({ metrics, size = 200 }) {
             cx={fmt(x)}
             cy={fmt(y)}
             r={3.5}
-            fill={COLORS.white}
+            fill={palette.dot}
             stroke={COLORS.blue}
             strokeWidth={2}
           />
@@ -132,7 +154,7 @@ export default function RadarChart({ metrics, size = 200 }) {
                 style={{
                   fontSize: 11,
                   fontWeight: 600,
-                  fill: COLORS.slate500,
+                  fill: palette.label,
                   fontFamily: FONT,
                 }}
               >
@@ -161,7 +183,7 @@ export default function RadarChart({ metrics, size = 200 }) {
                   style={{
                     fontSize: 8.5,
                     fontWeight: 600,
-                    fill: COLORS.slate400,
+                    fill: palette.hint,
                     letterSpacing: '0.02em',
                     fontFamily: FONT,
                   }}
